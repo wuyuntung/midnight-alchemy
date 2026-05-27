@@ -695,7 +695,7 @@
         rImg.style.width = currentEyeWidth + 'px';
         
         if (hasLockedCoordinates) {
-            const inwardShift = Math.min(currentEyeWidth * -0.5, 100);
+            const inwardShift = Math.min(currentEyeWidth * -0.3, 100);
             lImg.style.left = eyePositions.lx + inwardShift + 'px';
             lImg.style.top = eyePositions.ly + 'px';
             rImg.style.left = eyePositions.rx - inwardShift + 'px';
@@ -709,7 +709,6 @@
         canvasCtx.save();
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         
-        // 鏡像翻轉
         canvasCtx.translate(canvasElement.width, 0);
         canvasCtx.scale(-1, 1);
         canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -718,7 +717,6 @@
             const landmarks = results.multiFaceLandmarks[0];
             const rect = canvasElement.getBoundingClientRect();
 
-            // 精算左右兩眼在螢幕上的位置
             eyePositions.lx = rect.left + (1 - landmarks[111].x) * rect.width; 
             eyePositions.ly = rect.top + landmarks[111].y * rect.height;
             eyePositions.rx = rect.left + (1 - landmarks[340].x) * rect.width;
@@ -729,7 +727,6 @@
         canvasCtx.restore();
     }
 
-    // --- 心理問答邏輯 ---
     let scoreHistory = []; let totalScore = 0; let currentIdx = 0;
     const questions = [
         { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫無感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
