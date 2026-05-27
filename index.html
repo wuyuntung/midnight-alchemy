@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>眼前的黑不是黑 - 互動問答系統</title>
+    <title>眼前的黑不是黑</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
     
     <style>
         body {
@@ -18,18 +20,22 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden; /* 防止貼圖滿出網頁時出現瀏覽器捲軸 */
         }
+        
         .container {
             background-color: #141414;
-            padding: 40px;
+            padding: 30px; 
             border-radius: 24px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.7);
-            max-width: 550px;
-            width: 85%;
+            max-width: 850px; 
+            width: 92%;      
             text-align: center;
             border: 1px solid #222;
             position: relative;
+            box-sizing: border-box;
         }
+        
         h2 { margin-bottom: 25px; color: #ffdd67; font-size: 26px; }
         .progress { font-size: 14px; color: #666; margin-bottom: 15px; }
         .question-title { font-size: 20px; margin-bottom: 25px; line-height: 1.4; color: #e0e0e0; }
@@ -47,6 +53,7 @@
             cursor: pointer;
             text-align: left;
             transition: all 0.2s;
+            box-sizing: border-box;
         }
         .btn:hover { 
             background-color: #252525; 
@@ -76,6 +83,7 @@
         }
 
         .restart-btn {
+            display: inline-block;
             background-color: transparent;
             color: #ffdd67;
             border: 2px solid #ffdd67;
@@ -88,6 +96,9 @@
             margin-top: 25px;
             transition: all 0.3s ease;
             box-shadow: 0 0 15px rgba(255, 221, 103, 0.1);
+            position: relative !important;
+            z-index: 99999 !important; 
+            pointer-events: auto !important;
         }
         .restart-btn:hover {
             background-color: #ffdd67;
@@ -95,37 +106,189 @@
             box-shadow: 0 0 25px #ffdd67;
         }
 
-        #result-page { display: none; }
-        .color-display {
-            font-size: 28px;
-            font-weight: bold;
-            margin: 25px 0;
-            padding: 15px;
-            border-radius: 12px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        /* 🌟 下載按鈕專用強調色 */
+        .download-btn-style {
+            background-color: #ffdd67 !important;
+            color: #000000 !important;
+            box-shadow: 0 0 15px rgba(255, 221, 103, 0.4);
         }
-        .character-name { color: #ffdd67; font-size: 20px; font-weight: bold; }
+        .download-btn-style:hover {
+            background-color: #ffffff !important;
+            box-shadow: 0 0 25px #ffffff;
+        }
 
-        /* 相機與追蹤畫布樣式 */
-        #tracking-container {
-            display: none; 
-            margin-top: 20px;
+        .restart-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            border-color: #555;
+            color: #999;
+            box-shadow: none;
         }
-        #output_canvas {
+        .restart-btn:disabled:hover {
+            background-color: transparent;
+            color: #999;
+            box-shadow: none;
+        }
+
+        #result-page, #preview-page, #character-page, #photo-result-page { display: none; }
+        
+        #result-page #tracking-container, #preview-page #tracking-container {
+            margin-top: 0px !important;
             width: 100%;
-            max-width: 480px;
-            height: auto;
+            position: relative;
+        }
+        #result-page #output_canvas, #preview-page #preview-photo-img {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
             border-radius: 16px;
-            border: 2px solid #333;
-            transform: scaleX(-1); /* 鏡像翻轉，像照鏡子一樣直覺 */
+            border: none !important;
+        }
+        #result-page .restart-btn {
+            display: inline-block !important;
+            margin-top: 25px !important;
+            width: auto !important;
         }
 
-        /* 載入遮罩的樣式，確保完美覆蓋 */
+        /* 絕對定位的左右雙眼大圖 */
+        .eye-grow-img {
+            position: fixed; 
+            z-index: 9998; 
+            transform: translate(-50%, -50%); 
+            width: 0px; 
+            height: auto;
+            pointer-events: none; 
+            display: none; 
+            opacity: 0;
+            transition: opacity 2s ease;
+        }
+
+        #preview-page .preview-actions {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        #preview-page .restart-btn {
+            margin-top: 0 !important;
+        }
+
+        .display-character-img,
+        .display-photo-result-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+            object-fit: contain;
+        }
+
+        /* 最後雙欄結果大外框 */
+        .photo-result-shell {
+            width: min(100%, 1180px);
+            min-height: 55vh;
+            display: grid;
+            grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr);
+            gap: 24px;
+            align-items: center;
+        }
+
+        .result-media-column, .result-info-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .result-media-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #222;
+            border-radius: 22px;
+            padding: 12px;
+        }
+        .result-media-card img {
+            max-height: 24vh;
+        }
+
+        #photo-page-title, #photo-quote-text {
+            text-align: left;
+        }
+        #photo-quote-text {
+            color: #e0e0e0;
+            font-style: italic;
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .qr-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        #qr-code-container {
+            width: 140px;
+            height: 140px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-copy {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: left;
+            margin: 0;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 14px;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+        .result-actions .restart-btn {
+            margin-top: 0 !important;
+        }
+
         #ai-loading-mask {
             position: absolute; top:0; left:0; width:100%; height:100%; 
             background: #141414; z-index: 1000; 
             display: flex; justify-content: center; align-items: center; 
             border-radius: 24px; flex-direction: column;
+        }
+
+        /* 🌟 核心新增：專門用來拍照輸出、絕對純淨的「後台證書小卡片區」 */
+        /* 使用 position: absolute 移出視線，既能被 html2canvas 拍到，又絕對不會在畫面上穿幫 */
+        #my-clean-certificate-card {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            background-color: #141414;
+            padding: 30px;
+            border-radius: 24px;
+            width: 450px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        #my-clean-certificate-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
+            margin: 15px auto;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            .photo-result-shell { grid-template-columns: 1fr; }
+            .result-media-card img { max-height: none; }
+            .result-actions, .qr-section { justify-content: center; align-items: center; }
+            #photo-page-title, #photo-quote-text, .qr-copy { text-align: center; }
         }
     </style>
 </head>
@@ -134,7 +297,7 @@
 <div class="container">
     <div id="ai-loading-mask">
         <div style="font-size: 24px; color: #ffdd67; margin-bottom: 20px; font-weight: bold;">深夜煉金術指標載入中...</div>
-        <div style="font-size: 14px; color: #666;">（正在連結 Google AI 核心，請稍候）</div>
+        <div style="font-size: 14px; color: #666;">（正在連結 AI 核心，請稍候）</div>
     </div>
 
     <div id="quiz-page">
@@ -148,20 +311,73 @@
     </div>
 
     <div id="result-page">
-        <h2>負負得正 成功！</h2>
-        <p style="color: #888;">檢測結果：你的黑眼圈已成功回收並轉化為</p>
-        <div id="color-result" class="color-display">計算中...</div>
-        <div class="character-name" id="char-name"></div>
-        <p id="quote-text" style="color: #e0e0e0; font-style: italic; margin-top: 20px; font-size: 16px; line-height: 1.5;"></p>
-        
         <div id="tracking-container">
             <video id="webcam" autoplay playsinline style="display:none;" width="640" height="480"></video>
             <canvas id="output_canvas" width="640" height="480"></canvas>
         </div>
-
-        <p style="font-size: 12px; color: #444; margin-top: 30px;">💡 觀察上方鏡頭畫面，看可愛化身如何重組你的黑眼圈！</p>
-        <button class="restart-btn" onclick="resetQuizToCover()">重新回收 / 下一位</button>
+        
+        <img id="left-eye-img" src="" alt="左眼貼圖" class="eye-grow-img">
+        <img id="right-eye-img" src="" alt="右眼貼圖" class="eye-grow-img">
+        
+        <div style="display: none;">
+            <div id="char-name"></div>
+            <div id="quote-text"></div>
+        </div>
+        
+        <button id="camera-action-btn" class="restart-btn" onclick="goToPhotoPreview()" disabled>黑眼圈IP生成中...</button>
     </div>
+
+    <div id="preview-page">
+        <div id="tracking-container">
+            <img id="preview-photo-img" src="" alt="拍照預覽">
+        </div>
+        <div class="preview-actions">
+            <button class="restart-btn" onclick="retakePhoto()">重新拍照</button>
+            <button class="restart-btn" onclick="goToCharacterPage()">確認</button>
+        </div>
+    </div>
+
+    <div id="character-page">
+        <h2 id="char-page-title" style="color: #ffdd67; margin-bottom: 5px;">核心化身：</h2>
+        <img id="final-char-img" src="" alt="角色插圖" class="display-character-img">
+        <p id="quote-text-final" style="color: #e0e0e0; font-style: italic; margin: 15px auto; font-size: 16px; line-height: 1.5; max-width: 80%;"></p>
+        <div class="result-actions" style="justify-content: center;">
+            <button class="restart-btn" onclick="saveCurrentResult()">查看並儲存結果</button>
+        </div>
+    </div>
+
+    <div id="photo-result-page">
+        <div class="photo-result-shell">
+            <div class="result-media-column">
+                <h2 id="photo-page-title" style="color: #ffdd67; margin: 0;">核心化身：</h2>
+                <div class="result-media-card">
+                    <img id="photo-result-char-img" src="" alt="角色插圖" class="display-character-img">
+                </div>
+                <div class="result-media-card">
+                    <img id="photo-result-photo-img" src="" alt="拍照結果" class="display-photo-result-img">
+                </div>
+            </div>
+            <div class="result-info-column">
+                <p id="photo-quote-text"></p>
+                <div class="qr-section">
+                    <div id="qr-code-container"></div>
+                    <p class="qr-copy">掃描此 QR 碼可隨時重新開啟目前結果狀態網頁。</p>
+                </div>
+                <div class="result-actions">
+                    <button class="restart-btn download-btn-style" onclick="saveCurrentResult()">📥 儲存證書圖片</button>
+                </div>
+                <div class="result-actions">
+                    <button class="restart-btn" onclick="resetQuizToCover()">重新回收 / 下一位</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="my-clean-certificate-card">
+    <h2 id="card-render-title" style="color: #ffdd67; font-size: 24px; margin: 0 0 15px 0;">核心化身：</h2>
+    <img id="card-render-img" src="" alt="化身插圖">
+    <p id="card-render-quote" style="color: #e0e0e0; font-style: italic; font-size: 15px; line-height: 1.5; margin: 15px 0 0 0;"></p>
 </div>
 
 <script>
@@ -172,118 +388,274 @@
     let canvasCtx;
     let currentFinalColor = 'white'; 
     let loadedImages = {};           
+    let detectedColor = 'white'; 
+    let capturedPhotoDataUrl = '';
+    let qrCodeInstance = null;
 
-    const colorPatterns = {
-        red:    './images/pattern_red.png',    
-        orange: './images/pattern_orange.png', 
+    // 時間控速動畫變數
+    let currentEyeWidth = 70;   
+    const maxEyeWidth = 3200;   
+    const growSpeedPerSecond = 180; 
+
+    let hasLockedCoordinates = false; 
+    let animationFrameId = null;
+    let lastTimestamp = 0; 
+    let startTime = 0; 
+    let isShrinking = false;
+    let shrinkStartTimestamp = 0;
+    let hasCompletedSequence = false;
+
+    let eyePositions = { lx: 0, ly: 0, rx: 0, ry: 0 };
+
+    // 角色精緻大圖路徑對應
+    const characterImages = {
+        red:    './images/pattern_red_L.png',
+        orange: './images/pattern_orange_L.png',
+        yellow: './images/pattern_yellow_L.png',
+        green:  './images/pattern_green_L.png',
+        blue:   './images/pattern_blue_L.png',
+        purple: './images/pattern_purple_L.png',
+        black:  './images/pattern_black_L.png',
+        white:  './images/pattern_white_L.png'  
+    };
+
+    const colorPatternsBase = {
+        red:    './images/pattern_red.png',
+        orange: './images/pattern_orange.png',
         yellow: './images/pattern_yellow.png',
         green:  './images/pattern_green.png',
         blue:   './images/pattern_blue.png',
         purple: './images/pattern_purple.png',
-        black:  './images/pattern_black.png',  
-        white:  './images/pattern_white.png'   
+        black:  './images/pattern_black.png',
+        white:  './images/pattern_white.png'
     };
 
-    // 初始化 FaceMesh 核心
+    const colorPatternsLeft = {
+        red:    './images/pattern_red_L.png',
+        orange: './images/pattern_orange_L.png',
+        yellow: './images/pattern_yellow_L.png',
+        green:  './images/pattern_green_L.png',
+        blue:   './images/pattern_blue_L.png',
+        purple: './images/pattern_purple_L.png',
+        black:  './images/pattern_black_L.png',
+        white:  './images/pattern_white_L.png'
+    };
+
+    const colorPatternsRight = {
+        red:    './images/pattern_red_R.png',
+        orange: './images/pattern_orange_R.png',
+        yellow: './images/pattern_yellow_R.png',
+        green:  './images/pattern_green_R.png',
+        blue:   './images/pattern_blue_R.png',
+        purple: './images/pattern_purple_R.png',
+        black:  './images/pattern_black_R.png',
+        white:  './images/pattern_white_R.png'
+    };
+
     function initAiCore() {
         videoElement = document.getElementById("webcam");
         canvasElement = document.getElementById("output_canvas");
         canvasCtx = canvasElement.getContext("2d");
 
-        // 預載圖片
-        Object.keys(colorPatterns).forEach(color => {
+        Object.keys(colorPatternsLeft).forEach(color => {
             const img = new Image();
-            img.src = colorPatterns[color];
+            img.src = colorPatternsLeft[color];
+            loadedImages[`${color}_L`] = img;
+        });
+
+        Object.keys(colorPatternsRight).forEach(color => {
+            const img = new Image();
+            img.src = colorPatternsRight[color];
+            loadedImages[`${color}_R`] = img;
+        });
+
+        Object.keys(colorPatternsBase).forEach(color => {
+            const img = new Image();
+            img.src = colorPatternsBase[color];
             loadedImages[color] = img;
         });
 
-        // 實例化 FaceMesh
-        faceMesh = new FaceMesh({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        const FaceMeshClass = window.FaceMesh || FaceMesh;
+        faceMesh = new FaceMeshClass({
+            locateFile: (file) => `https://unpkg.com/@mediapipe/face_mesh@0.4/${file}`
         });
 
         faceMesh.setOptions({
             maxNumFaces: 1,
-            refineLandmarks: true, // 開啟瞳孔與眼周精細特徵
+            refineLandmarks: true, 
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
         });
 
         faceMesh.onResults(onFaceResults);
-
-        // 隱藏下載遮罩，正式開啟問答
         document.getElementById("ai-loading-mask").style.display = "none";
         showQuestion();
-        console.log("✨ 經典版 AI 核心與問答系統完美同步啟動！");
     }
 
-    // 答題結束，開啟相機追蹤
+    function updateCameraActionButtonState(isReady, label = '拍照') {
+        const cameraActionBtn = document.getElementById('camera-action-btn');
+        if (!cameraActionBtn) return;
+        cameraActionBtn.disabled = !isReady;
+        cameraActionBtn.innerText = label;
+    }
+
     function startTrackingAR(finalColor) {
         currentFinalColor = finalColor;
+        currentEyeWidth = 70; 
+        hasLockedCoordinates = false; 
+        isShrinking = false;
+        shrinkStartTimestamp = 0;
+        hasCompletedSequence = false;
+        capturedPhotoDataUrl = '';
+        updateCameraActionButtonState(false, '黑眼圈IP生成中...');
+        
+        const now = performance.now();
+        lastTimestamp = now; 
+        startTime = now; 
+
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        ensureResultEyeImages();
+        const lImg = document.getElementById('left-eye-img');
+        const rImg = document.getElementById('right-eye-img');
+        lImg.src = colorPatternsLeft[finalColor];
+        rImg.src = colorPatternsRight[finalColor];
+        lImg.style.width = '70px';
+        rImg.style.width = '70px';
+        lImg.style.opacity = '0';
+        rImg.style.opacity = '0';
+        lImg.style.display = 'none';
+        rImg.style.display = 'none';
+
         document.getElementById("tracking-container").style.display = "block";
 
-        camera = new Camera(videoElement, {
-            onFrame: async () => {
-                await faceMesh.send({ image: videoElement });
-            },
-            width: 640,
-            height: 480
-        });
-        camera.start();
+        if (!camera) {
+            const CameraClass = window.Camera || Camera;
+            camera = new CameraClass(videoElement, {
+                onFrame: async () => {
+                    await faceMesh.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start().catch(err => {
+                alert("鏡頭啟動失敗：" + err);
+            });
+        }
+
+        animateImageGrowth(performance.now());
     }
 
-    // AI 即時結果回傳與繪製 (包含除錯小綠點功能)
-    function onFaceResults(results) {
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    function animateImageGrowth(currentTimestamp) {
+        const deltaTime = (currentTimestamp - lastTimestamp) / 1000;
+        lastTimestamp = currentTimestamp;
 
+        const timeElapsed = currentTimestamp - startTime;
+
+        const lImg = document.getElementById('left-eye-img');
+        const rImg = document.getElementById('right-eye-img');
+        if (!lImg || !rImg) return;
+
+        const fadeDuration = 2500;
+        const pauseDuration = 2000;
+        const shrinkDuration = 1200;
+        const initialWaitDuration = 1500;
+
+        if (timeElapsed >= initialWaitDuration && hasLockedCoordinates) {
+            lImg.style.display = 'block';
+            rImg.style.display = 'block';
+
+            const fadeElapsed = timeElapsed - initialWaitDuration;
+            const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1);
+
+            if (fadeProgress < 1) {
+                lImg.style.opacity = String(fadeProgress);
+                rImg.style.opacity = String(fadeProgress);
+                currentEyeWidth = 70;
+            } else if (fadeElapsed < fadeDuration + pauseDuration) {
+                lImg.style.opacity = '1';
+                rImg.style.opacity = '1';
+                currentEyeWidth = 70;
+            } else if (hasCompletedSequence) {
+                lImg.style.opacity = '1';
+                rImg.style.opacity = '1';
+                currentEyeWidth = 70;
+                updateCameraActionButtonState(true, '拍照');
+            } else if (isShrinking) {
+                lImg.style.opacity = '1';
+                rImg.style.opacity = '1';
+
+                const shrinkProgress = Math.min((currentTimestamp - shrinkStartTimestamp) / shrinkDuration, 1);
+                currentEyeWidth = maxEyeWidth - (maxEyeWidth - 70) * shrinkProgress;
+
+                if (shrinkProgress >= 1) {
+                    currentEyeWidth = 70;
+                    isShrinking = false;
+                    hasCompletedSequence = true;
+                    lImg.src = colorPatternsBase[currentFinalColor];
+                    rImg.src = colorPatternsBase[currentFinalColor];
+                    updateCameraActionButtonState(true, '拍照');
+                }
+            } else {
+                lImg.style.opacity = '1';
+                rImg.style.opacity = '1';
+
+                const growProgress = Math.min((currentTimestamp - (startTime + initialWaitDuration + fadeDuration + pauseDuration)) / shrinkDuration, 1);
+                currentEyeWidth = 70 + (maxEyeWidth - 70) * growProgress;
+
+                if (growProgress >= 1) {
+                    currentEyeWidth = maxEyeWidth;
+                    lImg.src = colorPatternsLeft[currentFinalColor];
+                    rImg.src = colorPatternsRight[currentFinalColor];
+                    isShrinking = true;
+                    shrinkStartTimestamp = currentTimestamp;
+                }
+            }
+        } else {
+            currentEyeWidth = 70;
+            lImg.style.display = 'none';
+            rImg.style.display = 'none';
+        }
+
+        lImg.style.width = currentEyeWidth + 'px';
+        rImg.style.width = currentEyeWidth + 'px';
+        
+        if (hasLockedCoordinates) {
+            const inwardShift = Math.min(currentEyeWidth * -0.5, 100);
+            lImg.style.left = eyePositions.lx + inwardShift + 'px';
+            lImg.style.top = eyePositions.ly + 'px';
+            rImg.style.left = eyePositions.rx - inwardShift + 'px';
+            rImg.style.top = eyePositions.ry + 'px';
+        }
+
+        animationFrameId = requestAnimationFrame(animateImageGrowth);
+    }
+
+    function onFaceResults(results) {
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.translate(canvasElement.width, 0);
+        canvasCtx.scale(-1, 1);
+        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+        
         if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
             const landmarks = results.multiFaceLandmarks[0];
+            const rect = canvasElement.getBoundingClientRect();
 
-            // 🌟 盲測除錯：在臉上畫出所有網格點，確保 AI 運作中
-            canvasCtx.fillStyle = "#00FF00"; 
-            for (const landmark of landmarks) {
-                const x = landmark.x * canvasElement.width;
-                const y = landmark.y * canvasElement.height;
-                canvasCtx.beginPath();
-                canvasCtx.arc(x, y, 1, 0, 2 * Math.PI);
-                canvasCtx.fill();
-            }
+            eyePositions.lx = rect.left + (1 - landmarks[111].x) * rect.width; 
+            eyePositions.ly = rect.top + landmarks[111].y * rect.height;
+            eyePositions.rx = rect.left + (1 - landmarks[340].x) * rect.width;
+            eyePositions.ry = rect.top + landmarks[340].y * rect.height;
 
-            // 眼睛下方座標：左眼 111 / 右眼 340
-            const lx = landmarks[111].x * canvasElement.width;
-            const ly = landmarks[111].y * canvasElement.height;
-            const rx = landmarks[340].x * canvasElement.width;
-            const ry = landmarks[340].y * canvasElement.height;
-
-            // 繪製黑眼圈貼圖
-            drawPatternOnEye(lx, ly, currentFinalColor);
-            drawPatternOnEye(rx, ry, currentFinalColor);
+            hasLockedCoordinates = true; 
         }
+        canvasCtx.restore();
     }
 
-    function drawPatternOnEye(x, y, color) {
-        const img = loadedImages[color];
-        if (img && img.complete && img.naturalWidth > 0) {
-            const imgSize = 70;
-            canvasCtx.drawImage(img, x - imgSize / 2, y - imgSize / 2, imgSize, imgSize);
-        } else {
-            // 防呆：沒圖片就畫出半透明的防呆霓虹圈圈
-            canvasCtx.beginPath();
-            canvasCtx.arc(x, y, 22, 0, 2 * Math.PI);
-            const hexColors = { red: '#F44336', orange: '#FF9800', yellow: '#FFEB3B', green: '#4CAF50', blue: '#2196F3', purple: '#9C27B0', black: '#333333', white: '#ffffff' };
-            canvasCtx.fillStyle = hexColors[color] || '#ffffff';
-            canvasCtx.globalAlpha = 0.7;
-            canvasCtx.fill();
-            canvasCtx.globalAlpha = 1.0;
-        }
-    }
-
-    // --- 1-10 題心理問答資料與邏輯 ---
-    let scoreHistory = []; 
-    let totalScore = 0;
-    let currentIdx = 0;
-
+    // --- 心理問答題目數據 ---
+    let scoreHistory = []; let totalScore = 0; let currentIdx = 0;
     const questions = [
         { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫無感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
         { q: "2. 在捷運或公車上,你的眼睛和手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
@@ -293,12 +665,12 @@
         { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
         { q: "7. 深夜躺在床上準備睡覺時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
         { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈.。"], scores: [8, 6, 4, 2] },
-        { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寞,是不是自己哪裡做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
+        { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寂,是不是自己哪裡做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
     ];
 
     const question10 = {
         q: "10. 現在,前面有一面可以宣洩所有疲憊的「黑眼圈回收牆」,你最想把哪一種「心聲」丟進去回收?",
-        a: ["爆表的怒氣與暴躁", "無處安放的社群焦慮", "無法克制的拖延症", "對未來的迷茫與多愁善感", "被迫營業的假面微笑", "身體與心靈的過度勞累", "日復一日的乏味與麻木", "試圖討好所有人的緊繃感"],
+        a: ["爆表的怒氣與暴躁", "無處安放的社群焦慮", "無法克制的拖延症", "對未來的迷茫與多愁善感", "被迫營業的假面微笑", "身體與心靈的過度劳累", "日復一日的乏味與麻木", "試圖討好所有人的緊繃感"],
         scores: [8, 6, 4, 2, 8, 6, 4, 2]
     };
 
@@ -359,41 +731,262 @@
         }
     }
 
-    function resetQuizToCover() {
-        totalScore = 0;
-        currentIdx = 0;
-        scoreHistory = [];
-        window.location.href = "./cover.html";
-    }
-
     function showResult() {
         document.getElementById('quiz-page').style.display = 'none';
         document.getElementById('result-page').style.display = 'block';
 
-        let color = "white"; let charName = ""; let quote = ""; let hexColor = "#ffffff";
+        let color = "white"; let charName = ""; let quote = "";
 
-        if (totalScore >= 71) { color = "red"; charName = "大同電鍋"; hexColor = "#F44336"; quote = "「心裡一把火,飯都熟了。今天誰敢惹我,我就送他去『大同』世界。」"; }
-        else if (totalScore >= 62) { color = "yellow"; charName = "垃圾車"; hexColor = "#FFEB3B"; quote = "「大腦塞滿垃圾資訊,逼逼逼!好想把自己跟著垃圾車一起載走...」"; }
-        else if (totalScore >= 53) { color = "blue"; charName = "藍白拖"; hexColor = "#2196F3"; quote = "「今天真的是Monday Blue,真的是什麼事都想『拖』啊『拖』...」"; }
-        else if (totalScore >= 44) { color = "green"; charName = "茄紙袋"; hexColor = "#4CAF50"; quote = "「凡事追求和平、green(原諒)對方...再壓抑下去,我遲早變綠色郵筒被塞爆。」"; }
-        else if (totalScore >= 35) { color = "purple"; charName = "九份芋頭"; hexColor = "#9C27B0"; quote = "「生活就像夜市的芋圓,看起來Q彈,心裡其實全是一顆顆沉重的『內耗』,真讓人『芋』哭無淚。」"; }
-        else if (totalScore >= 26) { color = "orange"; charName = "中秋月餅/蛋黃酥"; hexColor = "#FF9800"; quote = "「天天被迫營業、面帶微笑。我的心早就跟月餅裡的蛋黃一樣,被生活給烤乾了。」"; }
-        else if (totalScore >= 20) { color = "black"; charName = "夜市豬血糕"; hexColor = "#1a1a1a"; quote = "「靈魂已經被生活揉躪得像豬血糕一樣。別跟我談夢想,老子現在只想『躺平』。」"; }
-        else { color = "white"; charName = "小籠包/包子/肉圓"; hexColor = "#ffffff"; quote = "「四大皆空,徹底麻木。老子的熱情已經被生活給『蒸』發了,現在只想當個薪水小偷。」"; }
+        if (totalScore >= 71) { color = "red"; charName = "大同電鍋"; quote = "「心裡一把火,飯都熟了。今天誰敢惹我,我就送他去『大同』世界。」"; }
+        else if (totalScore >= 62) { color = "yellow"; charName = "垃圾車"; quote = "「大腦塞滿垃圾資訊,逼逼逼!好想把自己跟著垃圾車一起載走...」"; }
+        else if (totalScore >= 53) { color = "blue"; charName = "藍白拖"; quote = "「今天真的是Monday Blue,真的什麼事都想『拖』啊『拖』...」"; }
+        else if (totalScore >= 44) { color = "green"; charName = "茄紙袋"; quote = "「凡事追求和平、green(原諒)對方...再壓抑下去,我遲早變綠色郵筒被塞爆。」"; }
+        else if (totalScore >= 35) { color = "purple"; charName = "九份芋頭"; quote = "「生活就像夜市的芋圓,看起來Q彈,心裡其實全是一顆顆沉重的『內耗』,真讓人『芋』哭無淚。」"; }
+        else if (totalScore >= 26) { color = "orange"; charName = "中秋月餅/蛋黃酥"; quote = "「天天被迫營業、面帶微笑。我的心早就跟月餅裡的蛋黃一樣,被生活給烤乾了。」"; }
+        else if (totalScore >= 20) { color = "black"; charName = "夜市豬血糕"; quote = "「靈魂已經被生活揉躪得像豬血糕一樣。別跟我談夢想,老子現在只想『躺平』。」"; }
+        else { color = "white"; charName = "小籠包/包子/肉圓"; quote = "「四大皆空,徹底麻木。老子的熱情已經被生活給『蒸』發了,現在只想當個薪水小偷。」"; }
 
-        const resDiv = document.getElementById('color-result');
-        resDiv.innerText = color.toUpperCase();
-        resDiv.style.backgroundColor = hexColor;
-        resDiv.style.color = (color === "white" || color === "yellow") ? "#000" : "#fff";
-        document.getElementById('char-name').innerText = `核心化身：${charName}`;
+        detectedColor = color; 
+        document.getElementById('char-name').innerText = charName;
         document.getElementById('quote-text').innerText = quote;
 
-        // 啟動 AR 鏡頭追蹤
         startTrackingAR(color);
     }
 
-    // 網頁一開，先執行 AI 初始化
-    window.addEventListener("DOMContentLoaded", initAiCore);
+    function captureCurrentFrame() {
+        if (!canvasElement) return '';
+        try {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvasElement.width;
+            tempCanvas.height = canvasElement.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvasElement, 0, 0, tempCanvas.width, tempCanvas.height);
+
+            return tempCanvas.toDataURL('image/png');
+        } catch (error) {
+            console.error('拍照失敗：', error);
+            return '';
+        }
+    }
+
+    function showPreviewPage() {
+        document.getElementById('result-page').style.display = 'none';
+        document.getElementById('preview-page').style.display = 'block';
+        const previewImg = document.getElementById('preview-photo-img');
+        if (previewImg) { previewImg.src = capturedPhotoDataUrl; }
+    }
+
+    function showCharacterPage() {
+        document.getElementById('preview-page').style.display = 'none';
+        document.getElementById('character-page').style.display = 'block';
+
+        const charImgElement = document.getElementById('final-char-img');
+        const resultImage = characterImages[detectedColor];
+        if (charImgElement) { charImgElement.src = resultImage; }
+
+        const originalCharName = document.getElementById('char-name').innerText;
+        const originalQuote = document.getElementById('quote-text').innerText;
+
+        document.getElementById('char-page-title').innerText = `核心化身：${originalCharName}`;
+        document.getElementById('quote-text-final').innerText = originalQuote;
+
+        // 🌟 搶先將隱形拍照區塊的內容寫好
+        document.getElementById('card-render-title').innerText = `核心化身：${originalCharName}`;
+        document.getElementById('card-render-img').src = resultImage;
+        document.getElementById('card-render-quote').innerText = originalQuote;
+    }
+
+    function persistCurrentResultState() {
+        const shareId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const state = {
+            charName: document.getElementById('char-name').innerText || '未知角色',
+            quote: document.getElementById('quote-text').innerText || '',
+            color: detectedColor,
+            photoDataUrl: capturedPhotoDataUrl || '',
+            timestamp: Date.now()
+        };
+        localStorage.setItem(`midnight-alchemy-share-${shareId}`, JSON.stringify(state));
+        return shareId;
+    }
+
+    function renderQrCode(text) {
+        const container = document.getElementById('qr-code-container');
+        if (!container) return;
+        container.innerHTML = '';
+        qrCodeInstance = new QRCode(container, {
+            text,
+            width: 156,
+            height: 156,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+
+    // 🌟 核心修正：點擊「儲存結果」時，精準拍攝背景隱形的乾淨小卡片，絕不穿幫！
+    async function saveCurrentResult() {
+        if (!window.html2canvas) {
+            alert('html2canvas 未載入');
+            return;
+        }
+
+        // 拍攝隱藏在後台的完美卡片區塊
+        const target = document.getElementById('my-clean-certificate-card');
+        
+        html2canvas(target, {
+            backgroundColor: '#141414',
+            scale: 2, // 拉高解析度確保存下來的證書極度精緻清晰
+            useCORS: true,
+            logging: false
+        }).then(canvas => {
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // 觸發電腦瀏覽器實體下載
+            const link = document.createElement('a');
+            link.href = imageDataUrl;
+            link.download = `負能量回收證書_${detectedColor}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }).catch(err => {
+            console.error('導出純淨圖片失敗：', err);
+        });
+
+        // 拍完照後，自動順暢切換到最終的 QR 碼狀態面板頁面
+        if (document.getElementById('photo-result-page').style.display !== 'block') {
+            goToPhotoResultPage();
+        }
+    }
+
+    function goToPhotoResultPage() {
+        document.getElementById('character-page').style.display = 'none';
+        document.getElementById('photo-result-page').style.display = 'block';
+
+        const charImgElement = document.getElementById('photo-result-char-img');
+        const photoImgElement = document.getElementById('photo-result-photo-img');
+        const resultImage = characterImages[detectedColor];
+
+        if (charImgElement) { charImgElement.src = resultImage; }
+        if (photoImgElement) {
+            photoImgElement.src = capturedPhotoDataUrl || '';
+            photoImgElement.style.display = capturedPhotoDataUrl ? 'block' : 'none';
+        }
+
+        const originalCharName = document.getElementById('char-name').innerText;
+        const originalQuote = document.getElementById('quote-text').innerText;
+
+        document.getElementById('photo-page-title').innerText = `核心化身：${originalCharName}`;
+        document.getElementById('photo-quote-text').innerText = originalQuote;
+        
+        // 刷新 QRcode 網址分享狀態
+        try {
+            const shareId = persistCurrentResultState();
+            const baseUrl = window.location.href.split(/[?#]/)[0];
+            const shareUrl = `${baseUrl}?share=${encodeURIComponent(shareId)}`;
+            renderQrCode(shareUrl);
+        } catch (e) {
+            renderQrCode(window.location.href);
+        }
+    }
+
+    function applySharedState(state) {
+        if (!state) return;
+        detectedColor = state.color || detectedColor;
+        currentFinalColor = state.color || currentFinalColor;
+
+        document.getElementById('char-name').innerText = state.charName || '未知角色';
+        document.getElementById('quote-text').innerText = state.quote || '';
+        capturedPhotoDataUrl = state.photoDataUrl || '';
+        goToPhotoResultPage();
+    }
+
+    function ensureResultEyeImages() {
+        const resultPage = document.getElementById('result-page');
+        if (!resultPage) return;
+        if (!document.getElementById('left-eye-img')) {
+            const img = document.createElement('img'); img.id = 'left-eye-img'; img.className = 'eye-grow-img'; img.alt = '左眼貼圖';
+            resultPage.appendChild(img);
+        }
+        if (!document.getElementById('right-eye-img')) {
+            const img = document.createElement('img'); img.id = 'right-eye-img'; img.className = 'eye-grow-img'; img.alt = '右眼貼圖';
+            resultPage.appendChild(img);
+        }
+    }
+
+    function restoreReadyToCaptureState() {
+        ensureResultEyeImages();
+        const lImg = document.getElementById('left-eye-img');
+        const rImg = document.getElementById('right-eye-img');
+        lImg.src = colorPatternsBase[currentFinalColor];
+        rImg.src = colorPatternsBase[currentFinalColor];
+        lImg.style.display = 'block'; rImg.style.display = 'block';
+        lImg.style.opacity = '1'; rImg.style.opacity = '1';
+        currentEyeWidth = 70; lImg.style.width = '70px'; rImg.style.width = '70px';
+
+        isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
+        startTime = performance.now() - 7000;
+        lastTimestamp = performance.now();
+
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        animationFrameId = requestAnimationFrame(animateImageGrowth);
+    }
+
+    function retakePhoto() {
+        document.getElementById('preview-page').style.display = 'none';
+        document.getElementById('result-page').style.display = 'block';
+        capturedPhotoDataUrl = '';
+        updateCameraActionButtonState(true, '拍照');
+
+        if (!camera) {
+            const CameraClass = window.Camera || Camera;
+            camera = new CameraClass(videoElement, {
+                onFrame: async () => { await faceMesh.send({ image: videoElement }); },
+                width: 640, height: 480
+            });
+        }
+        try { camera.start(); } catch (e) { console.error(e); }
+        restoreReadyToCaptureState();
+    }
+
+    function goToPhotoPreview() {
+        const cameraActionBtn = document.getElementById('camera-action-btn');
+        if (cameraActionBtn && cameraActionBtn.disabled) return;
+
+        capturedPhotoDataUrl = captureCurrentFrame();
+        if (camera) { try { camera.stop(); } catch(e) {} }
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+
+        const lImg = document.getElementById('left-eye-img');
+        const rImg = document.getElementById('right-eye-img');
+        if (lImg) lImg.remove();
+        if (rImg) rImg.remove();
+
+        showPreviewPage();
+    }
+
+    function goToCharacterPage() {
+        showCharacterPage();
+    }
+
+    function resetQuizToCover() {
+        totalScore = 0; currentIdx = 0; scoreHistory = [];
+        document.getElementById('preview-page').style.display = 'none';
+        document.getElementById('character-page').style.display = 'none';
+        document.getElementById('photo-result-page').style.display = 'none';
+        window.location.href = "./cover.html";
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        initAiCore();
+        const params = new URLSearchParams(window.location.search);
+        const shareId = params.get('share');
+        if (shareId) {
+            const savedState = localStorage.getItem(`midnight-alchemy-share-${shareId}`);
+            if (savedState) {
+                try { applySharedState(JSON.parse(savedState)); } catch (e) { console.error(e); }
+            }
+        }
+    });
 </script>
 </body>
 </html>
