@@ -809,15 +809,14 @@
 
         let color = "white"; let charName = ""; let quote = "";
 
-        if (totalScore >= 71) { color = "red"; charName = "大同電鍋"; quote = "「心裡一把火,飯都熟了。今天誰敢惹我,我就送他去『大同』世界。」"; }
-        else if (totalScore >= 62) { color = "yellow"; charName = "垃圾車"; quote = "「大腦塞滿垃圾資訊,逼逼逼!好想把自己跟著垃圾車一起載走...」"; }
-        else if (totalScore >= 53) { color = "blue"; charName = "藍白拖"; quote = "「今天真的是Monday Blue,真的什麼事都想『拖』啊『拖』...」"; }
-        else if (totalScore >= 44) { color = "green"; charName = "茄紙袋"; quote = "「凡事追求和平、green(原諒)對方...再壓抑下去,我遲早變綠色郵筒被塞爆。」"; }
-        else if (totalScore >= 35) { color = "purple"; charName = "九份芋頭"; quote = "「生活就像夜市的芋圓,看起來Q彈,心裡其實全是一顆顆沉重的『內耗』,真讓人『芋』哭無淚。」"; }
-        else if (totalScore >= 26) { color = "orange"; charName = "中秋月餅/蛋黃酥"; quote = "「天天被迫營業、面帶微笑。我的心早就跟月餅裡的蛋黃一樣,被生活給烤乾了。」"; }
-        else if (totalScore >= 20) { color = "black"; charName = "夜市豬血糕"; quote = "「靈魂已經被生活揉躪得像豬血糕一樣。別跟我談夢想,老子現在只想『躺平』。」"; }
-        else { color = "white"; charName = "小籠包/包子/肉圓"; quote = "「四大皆空,徹底麻木。老子的熱情已經被生活給『蒸』發了,現在只想當個薪水小偷。」"; }
-
+        if (totalScore >= 71) { color = "red"; charName = "氣到快炸鍋．老紅"; quote = "死線壓頂，腦袋已經狂冒白煙！再惹我，老子絕對跟你一起跳開關、同歸於盡！"; }
+        else if (totalScore >= 62) { color = "yellow"; charName = "資訊垃圾桶．阿黃"; quote = "半夜三點還在刷動態，焦慮早就超載。看著別人的精彩生活，真想把自己當垃圾倒掉。"; }
+        else if (totalScore >= 53) { color = "blue"; charName = "萬物皆可拖．小藍"; quote = "今天又是 Monday Blue，什麼都想拖啊拖，但又擔心事情做不完，好煩啊！"; }
+        else if (totalScore >= 44) { color = "green"; charName = "萬物皆可包．小綠"; quote = "習慣壓抑討好，什麼爛事都往我這裡裝。以為自己萬能，結果日子過得一袋不如一袋。"; }
+        else if (totalScore >= 35) { color = "purple"; charName = "想太多的芋圓．阿紫"; quote = "前途沒大富大貴，紫有一片迷茫。昨晚又為未來熬夜芋卒，像顆不知該滾去哪的爛芋圓。"; }
+        else if (totalScore >= 26) { color = "orange"; charName = "被迫營業中．阿餅"; quote = "累到內餡都要碎了，還是得擠出假笑。人生沒有花好月圓，笑著笑著就流淚了。"; }
+        else if (totalScore >= 20) { color = "black"; charName = "社交糕負摔．老黑"; quote = "生活一片漆黑，身心早已過勞見底。每天熬夜爆肝，只覺得人生真是糟糕。"; }
+        else { color = "white"; charName = "麻木白肉圓．阿白"; quote = "日子單調無趣，生活像肉圓的外皮一樣透明乏味，早就被世界看透，今天繼續當個毫無靈魂的軟爛肉圓。"; }
         detectedColor = color; 
 
         document.getElementById('char-name').innerText = charName;
