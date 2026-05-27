@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>眼前的黑不是黑 - 提案封面</title>
+    <style>
+        /* 1. 全純黑背景 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000; /* 純黑無懈可擊 */
+            color: #ffffff;
+            font-family: "Helvetica Neue", Arial, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 2. 流體畫布：移除容易導致全黑的 contrast 濾鏡，改用穩定的 blur 與 mix-blend-mode */
+        .fluid-canvas {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 320px;
+            background: #000000;
+            margin-bottom: 10px;
+        }
+
+        /* 黑眼圈主體 */
+        .eyecircle {
+            width: 140px;
+            height: 140px;
+            background-color: #121212; /* 稍微帶點暗灰，確保高強度光暈能顯色 */
+            border-radius: 50%;
+            position: absolute;
+            mix-blend-mode: screen; /* 讓兩邊的彩色光暈相撞時產生亮光融合 */
+        }
+
+        /* 左眼：發燙焦慮流體 (大幅加強光暈範圍) */
+        .left {
+            left: calc(50% - 200px);
+            border: 4px solid #ff453a; /* 紅色基底[cite: 2] */
+            /* 調整光暈半徑與色彩強度 */
+            box-shadow: 
+                0 0 30px #ff453a, 
+                0 0 60px #ff9f0a, 
+                0 0 90px #ffd60a; /* 紅、橙、黃疊加[cite: 2] */
+            animation: leftFluidHeavy 5s infinite ease-in-out alternate;
+        }
+
+        /* 右眼：憂鬱內耗流體 (大幅加強光暈範圍)[cite: 2] */
+        .right {
+            right: calc(50% - 200px);
+            border: 4px solid #0a84ff; /* 藍色基底[cite: 2] */
+            box-shadow: 
+                0 0 30px #0a84ff, 
+                0 0 60px #bf5af2, 
+                0 0 90px #30d158; /* 藍、紫、綠疊加[cite: 2] */
+            animation: rightFluidHeavy 5.5s infinite ease-in-out alternate;
+        }
+
+        /* 3. 文字排版區 */
+        .text-container {
+            text-align: center;
+            z-index: 10;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 64px;
+            font-weight: 900;
+            color: #ffdd67; /* 經典吸睛亮黃[cite: 2] */
+            margin: 0 0 15px 0;
+            letter-spacing: 6px;
+            text-shadow: 0 0 20px rgba(255, 221, 103, 0.3);
+        }
+
+        p.subtitle {
+            font-size: 20px;
+            font-weight: 300;
+            color: #888888; /* 死灰色[cite: 2] */
+            margin: 0;
+            letter-spacing: 6px;
+        }
+
+        /* 4. 互動按鈕 */
+        .start-btn {
+            background-color: transparent;
+            color: #ffdd67; /* 亮黃字體[cite: 2] */
+            border: 2px solid #ffdd67;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 221, 103, 0.2);
+            text-decoration: none;
+        }
+
+        .start-btn:hover {
+            background-color: #ffdd67;
+            color: #000000;
+            box-shadow: 0 0 30px #ffdd67;
+            transform: scale(1.05);
+        }
+
+        .slogan {
+            position: absolute;
+            bottom: 40px;
+            right: 50px;
+            font-size: 13px;
+            color: #444444;
+            letter-spacing: 2px;
+            font-style: italic;
+        }
+
+        /* 5. 大幅強化位移扭曲動畫（往中間大幅靠攏，製造明顯碰撞） */
+        @keyframes leftFluidHeavy {
+            0% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+                border-radius: 40% 60% 35% 65% / 60% 40% 60% 40%;
+            }
+            50% {
+                transform: translate(50px, -30px) scale(1.2) rotate(60deg);
+                border-radius: 55% 45% 50% 50% / 45% 55% 45% 55%;
+            }
+            100% {
+                /* 超大位移：強行朝中間游動 110 像素，與右眼色彩強烈疊加渲染[cite: 2] */
+                transform: translate(110px, 20px) scale(0.95) rotate(120deg);
+                border-radius: 35% 65% 45% 55% / 55% 35% 65% 45%;
+            }
+        }
+
+        @keyframes rightFluidHeavy {
+            0% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+                border-radius: 65% 35% 60% 40% / 40% 65% 40% 60%;
+            }
+            50% {
+                transform: translate(-50px, 35px) scale(0.9) rotate(-60deg);
+                border-radius: 45% 55% 55% 45% / 50% 45% 55% 50%;
+            }
+            100% {
+                /* 超大位移：強行朝中間游動 -110 像素，與左眼色彩強烈疊加渲染[cite: 2] */
+                transform: translate(-110px, -20px) scale(1.15) rotate(-120deg);
+                border-radius: 60% 40% 55% 45% / 45% 65% 45% 55%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 修正後的彩色黑眼圈流體，保證各平台絕對顯色亮起！[cite: 2] -->
+    <div class="fluid-canvas">
+        <div class="eyecircle left"></div>
+        <div class="eyecircle right"></div>
+    </div>
+
+    <!-- 文字排版 -->
+    <div class="text-container">
+        <h1>眼前的黑不是黑</h1>
+        <p class="subtitle">一場彩色黑眼圈的負負得正回收站計畫</p>
+    </div>
+
+    <!-- 導向問答系統按鈕 -->
+    <a href="index.html" class="start-btn">進入回收程序</a>
+
+    <div class="slogan">
+        「進來前滿臉倦容，出去後負負得正」
+    </div>
+
+</body>
+</html>

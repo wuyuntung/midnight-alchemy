@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>眼前的黑不是黑 - 互動問答系統</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #0b0b0b;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #141414;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+            max-width: 550px;
+            width: 85%;
+            text-align: center;
+            border: 1px solid #222;
+        }
+        h2 { margin-bottom: 25px; color: #ffdd67; font-size: 26px; }
+        .progress { font-size: 14px; color: #666; margin-bottom: 15px; }
+        .question-title { font-size: 20px; margin-bottom: 25px; line-height: 1.4; color: #e0e0e0; }
+        
+        /* 選項主要按鈕 */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 18px 20px;
+            margin: 12px 0;
+            background-color: #1c1c1c;
+            color: #ddd;
+            border: 2px solid #2c2c2c;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .btn:hover { 
+            background-color: #252525; 
+            border-color: #ffdd67; 
+            color: #fff;
+        }
+
+        /* 底部返回按鈕區與樣式 */
+        .nav-actions {
+            margin-top: 25px;
+            border-top: 1px solid #222;
+            padding-top: 15px;
+        }
+        .back-btn {
+            background: transparent;
+            color: #666;
+            border: 1px solid #333;
+            padding: 8px 20px;
+            font-size: 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .back-btn:hover {
+            color: #ffdd67;
+            border-color: #ffdd67;
+            background-color: rgba(255, 221, 103, 0.05);
+        }
+
+        /* 結果頁面的重置按鈕樣式 */
+        .restart-btn {
+            background-color: transparent;
+            color: #ffdd67;
+            border: 2px solid #ffdd67;
+            padding: 12px 30px;
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 221, 103, 0.1);
+        }
+        .restart-btn:hover {
+            background-color: #ffdd67;
+            color: #000000;
+            box-shadow: 0 0 25px #ffdd67;
+        }
+
+        #result-page { display: none; }
+        .color-display {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 25px 0;
+            padding: 15px;
+            border-radius: 12px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .character-name { color: #ffdd67; font-size: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 問答頁面 -->
+    <div id="quiz-page">
+        <div class="progress" id="progress-text">LOADING...</div>
+        <div class="question-title" id="question-text">準備進入黑眼圈回收程序...</div>
+        <div id="options-container"></div>
+        
+        <!-- 導航按鈕放置區 -->
+        <div class="nav-actions">
+            <button id="back-nav-btn" class="back-btn" onclick="handleBackNavigation()">← 返回封面</button>
+        </div>
+    </div>
+
+    <!-- 結果與傳送頁面 -->
+    <div id="result-page">
+        <h2>負負得正 成功！</h2>
+        <p style="color: #888;">檢測結果：你的黑眼圈已成功回收並轉化為</p>
+        <div id="color-result" class="color-display">計算中...</div>
+        <div class="character-name" id="char-name"></div>
+        <p id="quote-text" style="color: #e0e0e0; font-style: italic; margin-top: 20px; font-size: 16px; line-height: 1.5;"></p>
+        <p style="font-size: 12px; color: #444; margin-top: 30px;">💡 請觀看前方大螢幕捕捉特效，並掃描 QR Code 下載拍貼！</p>
+        
+        <!-- 【新增】重新開始按鈕，維持展場不間斷體驗 -->
+        <button class="restart-btn" onclick="resetQuizToCover()">重新回收 / 下一位</button>
+    </div>
+</div>
+
+<script>
+    const ws = new WebSocket('ws://localhost:8080');
+    
+    // 記錄使用者每一步選了幾分，支援倒退扣分
+    let scoreHistory = []; 
+    let totalScore = 0;
+    let currentIdx = 0;
+
+    // 企劃書 1-9 題地獄日常心理問答 (A=8分, B=6分, C=4分, D=2分)[cite: 2]
+    const questions = [
+        { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫無感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
+        { q: "2. 在捷運或公車上,你的眼睛和手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
+        { q: "3. 如果你的工作/課業壓力是一頂帽子,你覺得現在這頂帽子?", a: ["重到快把我的頸椎壓斷了。", "有點大頂,遮住了我前方的視線,讓我有點迷惘。", "顏色太鮮豔了,周圍的人一直在盯著看,讓我好焦慮。", "還算合身,只是戴久了有點悶。"], scores: [8, 6, 4, 2] },
+        { q: "4. 當你遇到意見不合的豬隊友時,你內心的第一直覺是?", a: ["火火火!好想直接拍桌大吵一架!", "算了,心好累,你說什麼都對(內心開始擺爛)。", "表面微笑說好,私底下瘋狂跟朋友寫小作文抱怨。", "試圖冷靜分析,找出兩全其美的解決辦法。"], scores: [8, 6, 4, 2] },
+        { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過的痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
+        { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
+        { q: "7. 深夜躺在床上準備睡覺時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
+        { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈。"], scores: [8, 6, 4, 2] },
+        { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寞,是不是自己哪裡做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
+    ];
+
+    // 第 10 題最終定色關鍵題[cite: 2]
+    const question10 = {
+        q: "10. 現在,前面有一面可以宣洩所有疲憊的「黑眼圈回收牆」,你最想把哪一種「心聲」丟進去回收?",
+        a: [
+            "爆表的怒氣與暴躁",
+            "無處安放的社群焦慮",
+            "無法克制的拖延症",
+            "對未來的迷茫與多愁善感",
+            "被迫營業的假面微笑",
+            "身體與心靈的過度勞累",
+            "日復一日的乏味與麻木",
+            "試圖討好所有人的緊繃感"
+        ],
+        scores: [8, 6, 4, 2, 8, 6, 4, 2]
+    };
+
+    function showQuestion() {
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        const navBtn = document.getElementById('back-nav-btn');
+
+        // 動態調整底部導航按鈕的文字
+        if (currentIdx === 0) {
+            navBtn.innerText = "← 返回封面";
+        } else {
+            navBtn.innerText = "← 回到上一題";
+        }
+
+        // 1. 前 9 題
+        if (currentIdx < questions.length) {
+            document.getElementById('progress-text').innerText = `PHASE 2: 負能量提煉中 | 問題 ${currentIdx + 1} / 10`;
+            const currentQ = questions[currentIdx];
+            document.getElementById('question-text').innerText = currentQ.q;
+
+            currentQ.a.forEach((option, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = option;
+                btn.onclick = () => {
+                    scoreHistory.push(currentQ.scores[i]);
+                    totalScore += currentQ.scores[i];
+                    currentIdx++;
+                    
+                    notifyTouchDesigner();
+                    showQuestion();
+                };
+                optionsContainer.appendChild(btn);
+            });
+        } 
+        // 2. 第 10 題
+        else if (currentIdx === questions.length) {
+            document.getElementById('progress-text').innerText = `PHASE 3: 負負得正臨界點 | 最終題`;
+            document.getElementById('question-text').innerText = question10.q;
+
+            question10.a.forEach((option, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.innerText = option;
+                btn.onclick = () => {
+                    scoreHistory.push(question10.scores[i]);
+                    totalScore += question10.scores[i];
+                    currentIdx++;
+                    showResult();
+                };
+                optionsContainer.appendChild(btn);
+            });
+        }
+    }
+
+    // 處理返回按鈕的點擊事件（此處已完美拔除 Bug 標籤）
+    function handleBackNavigation() {
+        if (currentIdx === 0) {
+            // 如果在第一題，直接導回封面網頁
+            window.location.href = "cover.html";
+        } else {
+            // 如果在後面的題目，退回一題並把剛剛加的分數扣掉
+            currentIdx--;
+            const lastAddedScore = scoreHistory.pop();
+            totalScore -= lastAddedScore;
+            
+            notifyTouchDesigner();
+            showQuestion();
+        }
+    }
+
+    // 【新增】結果頁面點擊重新開始的函式
+    function resetQuizToCover() {
+        totalScore = 0;
+        currentIdx = 0;
+        scoreHistory = [];
+        window.location.href = "cover.html";
+    }
+
+    // 通知 TouchDesigner 當前進度的獨立函式
+    function notifyTouchDesigner() {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ isFinal: false, step: currentIdx }));
+        }
+    }
+
+    // 3. 答題結束，一槍定色[cite: 2]
+    function showResult() {
+        document.getElementById('quiz-page').style.display = 'none';
+        document.getElementById('result-page').style.display = 'block';
+
+        let color = "white";
+        let charName = "";
+        let quote = "";
+        let hexColor = "#ffffff";
+
+        // 企劃書 8 款顏色分數落點區間[cite: 2]
+        if (totalScore >= 71) { color = "red"; charName = "大同電鍋"; hexColor = "#F44336"; quote = "「心裡一把火,飯都熟了。今天誰敢惹我,我就送他去『大同』世界。」"; }
+        else if (totalScore >= 62) { color = "yellow"; charName = "垃圾車"; hexColor = "#FFEB3B"; quote = "「大腦塞滿垃圾資訊,逼逼逼!好想把自己跟著垃圾車一起載走...」"; }
+        else if (totalScore >= 53) { color = "blue"; charName = "藍白拖"; hexColor = "#2196F3"; quote = "「今天真的是Monday Blue,真的是什麼事都想『拖』啊『拖』...」"; }
+        else if (totalScore >= 44) { color = "green"; charName = "綠色郵筒"; hexColor = "#4CAF50"; quote = "「凡事追求和平、green(原諒)對方...再壓抑下去,我遲早變綠色郵筒被塞爆。」"; }
+        else if (totalScore >= 35) { color = "purple"; charName = "九份芋頭"; hexColor = "#9C27B0"; quote = "「生活就像夜市的芋圓,看起來Q彈,心裡其實全是一顆顆沉重的『內耗』,真讓人『芋』哭無淚。」"; }
+        else if (totalScore >= 26) { color = "orange"; charName = "中秋月餅/蛋黃酥"; hexColor = "#FF9800"; quote = "「天天被迫營業、面帶微笑。我的心早就跟月餅裡的蛋黃一樣,被生活給烤乾了。」"; }
+        else if (totalScore >= 20) { color = "black"; charName = "夜市豬血糕"; hexColor = "#1a1a1a"; quote = "「靈魂已經被生活揉躪得像豬血糕一樣。別跟我談夢想,老子現在只想『躺平』。」"; }
+        else { color = "white"; charName = "小籠包/包子/肉圓"; hexColor = "#ffffff"; quote = "「四大皆空,徹底麻木。老子的熱情已經被生活給『蒸』發了,現在只想當個薪水小偷。」"; }
+
+        const resDiv = document.getElementById('color-result');
+        resDiv.innerText = color.toUpperCase();
+        resDiv.style.backgroundColor = hexColor;
+        resDiv.style.color = (color === "white" || color === "yellow") ? "#000" : "#fff";
+        document.getElementById('char-name').innerText = `核心化身：${charName}`;
+        document.getElementById('quote-text').innerText = quote;
+
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ isFinal: true, step: 10, finalColor: color }));
+        }
+    }
+
+    // 啟動
+    showQuestion();
+</script>
+</body>
+</html>y
