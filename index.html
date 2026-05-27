@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>眼前的黑不是黑 - 互動問答系統</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -24,12 +28,12 @@
             width: 85%;
             text-align: center;
             border: 1px solid #222;
+            position: relative;
         }
         h2 { margin-bottom: 25px; color: #ffdd67; font-size: 26px; }
         .progress { font-size: 14px; color: #666; margin-bottom: 15px; }
         .question-title { font-size: 20px; margin-bottom: 25px; line-height: 1.4; color: #e0e0e0; }
         
-        /* 選項主要按鈕 */
         .btn {
             display: block;
             width: 100%;
@@ -50,7 +54,6 @@
             color: #fff;
         }
 
-        /* 底部返回按鈕區與樣式 */
         .nav-actions {
             margin-top: 25px;
             border-top: 1px solid #222;
@@ -72,7 +75,6 @@
             background-color: rgba(255, 221, 103, 0.05);
         }
 
-        /* 結果頁面的重置按鈕樣式 */
         .restart-btn {
             background-color: transparent;
             color: #ffdd67;
@@ -104,9 +106,9 @@
         }
         .character-name { color: #ffdd67; font-size: 20px; font-weight: bold; }
 
-        /* ✨【新增】相機與追蹤畫布樣式 */
+        /* 相機與追蹤畫布樣式 */
         #tracking-container {
-            display: none; /* 一開始隱藏，答題完由 JS 開啟 */
+            display: none; 
             margin-top: 20px;
         }
         #output_canvas {
@@ -115,13 +117,26 @@
             height: auto;
             border-radius: 16px;
             border: 2px solid #333;
-            transform: scaleX(-1); /* 鏡像翻轉，看畫面像照鏡子般直覺 */
+            transform: scaleX(-1); /* 鏡像翻轉，像照鏡子一樣直覺 */
+        }
+
+        /* 載入遮罩的樣式，確保完美覆蓋 */
+        #ai-loading-mask {
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            background: #141414; z-index: 1000; 
+            display: flex; justify-content: center; align-items: center; 
+            border-radius: 24px; flex-direction: column;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div id="ai-loading-mask">
+        <div style="font-size: 24px; color: #ffdd67; margin-bottom: 20px; font-weight: bold;">深夜煉金術指標載入中...</div>
+        <div style="font-size: 14px; color: #666;">（正在連結 Google AI 核心，請稍候）</div>
+    </div>
+
     <div id="quiz-page">
         <div class="progress" id="progress-text">LOADING...</div>
         <div class="question-title" id="question-text">準備進入黑眼圈回收程序...</div>
@@ -144,21 +159,131 @@
             <canvas id="output_canvas" width="640" height="480"></canvas>
         </div>
 
-        <p style="font-size: 12px; color: #444; margin-top: 30px;">💡 請觀看前方大螢幕捕捉特效，並掃描 QR Code 下載拍貼！</p>
-        
+        <p style="font-size: 12px; color: #444; margin-top: 30px;">💡 觀察上方鏡頭畫面，看可愛化身如何重組你的黑眼圈！</p>
         <button class="restart-btn" onclick="resetQuizToCover()">重新回收 / 下一位</button>
     </div>
 </div>
 
-<script type="module" src="./app.js"></script>
-
 <script>
-    // 註：已成功移除舊有 WebSocket 連線邏輯
+    let faceMesh;
+    let camera;
+    let videoElement;
+    let canvasElement;
+    let canvasCtx;
+    let currentFinalColor = 'white'; 
+    let loadedImages = {};           
+
+    const colorPatterns = {
+        red:    './images/pattern_red.png',    
+        orange: './images/pattern_orange.png', 
+        yellow: './images/pattern_yellow.png',
+        green:  './images/pattern_green.png',
+        blue:   './images/pattern_blue.png',
+        purple: './images/pattern_purple.png',
+        black:  './images/pattern_black.png',  
+        white:  './images/pattern_white.png'   
+    };
+
+    // 初始化 FaceMesh 核心
+    function initAiCore() {
+        videoElement = document.getElementById("webcam");
+        canvasElement = document.getElementById("output_canvas");
+        canvasCtx = canvasElement.getContext("2d");
+
+        // 預載圖片
+        Object.keys(colorPatterns).forEach(color => {
+            const img = new Image();
+            img.src = colorPatterns[color];
+            loadedImages[color] = img;
+        });
+
+        // 實例化 FaceMesh
+        faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true, // 開啟瞳孔與眼周精細特徵
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onFaceResults);
+
+        // 隱藏下載遮罩，正式開啟問答
+        document.getElementById("ai-loading-mask").style.display = "none";
+        showQuestion();
+        console.log("✨ 經典版 AI 核心與問答系統完美同步啟動！");
+    }
+
+    // 答題結束，開啟相機追蹤
+    function startTrackingAR(finalColor) {
+        currentFinalColor = finalColor;
+        document.getElementById("tracking-container").style.display = "block";
+
+        camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await faceMesh.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+    }
+
+    // AI 即時結果回傳與繪製 (包含除錯小綠點功能)
+    function onFaceResults(results) {
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+
+            // 🌟 盲測除錯：在臉上畫出所有網格點，確保 AI 運作中
+            canvasCtx.fillStyle = "#00FF00"; 
+            for (const landmark of landmarks) {
+                const x = landmark.x * canvasElement.width;
+                const y = landmark.y * canvasElement.height;
+                canvasCtx.beginPath();
+                canvasCtx.arc(x, y, 1, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            }
+
+            // 眼睛下方座標：左眼 111 / 右眼 340
+            const lx = landmarks[111].x * canvasElement.width;
+            const ly = landmarks[111].y * canvasElement.height;
+            const rx = landmarks[340].x * canvasElement.width;
+            const ry = landmarks[340].y * canvasElement.height;
+
+            // 繪製黑眼圈貼圖
+            drawPatternOnEye(lx, ly, currentFinalColor);
+            drawPatternOnEye(rx, ry, currentFinalColor);
+        }
+    }
+
+    function drawPatternOnEye(x, y, color) {
+        const img = loadedImages[color];
+        if (img && img.complete && img.naturalWidth > 0) {
+            const imgSize = 70;
+            canvasCtx.drawImage(img, x - imgSize / 2, y - imgSize / 2, imgSize, imgSize);
+        } else {
+            // 防呆：沒圖片就畫出半透明的防呆霓虹圈圈
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 22, 0, 2 * Math.PI);
+            const hexColors = { red: '#F44336', orange: '#FF9800', yellow: '#FFEB3B', green: '#4CAF50', blue: '#2196F3', purple: '#9C27B0', black: '#333333', white: '#ffffff' };
+            canvasCtx.fillStyle = hexColors[color] || '#ffffff';
+            canvasCtx.globalAlpha = 0.7;
+            canvasCtx.fill();
+            canvasCtx.globalAlpha = 1.0;
+        }
+    }
+
+    // --- 1-10 題心理問答資料與邏輯 ---
     let scoreHistory = []; 
     let totalScore = 0;
     let currentIdx = 0;
 
-    // 1-9 題心理問答
     const questions = [
         { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫無感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
         { q: "2. 在捷運或公車上,你的眼睛和手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
@@ -167,11 +292,10 @@
         { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過的痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
         { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
         { q: "7. 深夜躺在床上準備睡覺時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
-        { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈。"], scores: [8, 6, 4, 2] },
+        { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈.。"], scores: [8, 6, 4, 2] },
         { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寞,是不是自己哪裡做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
     ];
 
-    // 第 10 題最終定色關鍵題
     const question10 = {
         q: "10. 現在,前面有一面可以宣洩所有疲憊的「黑眼圈回收牆」,你最想把哪一種「心聲」丟進去回收?",
         a: ["爆表的怒氣與暴躁", "無處安放的社群焦慮", "無法克制的拖延症", "對未來的迷茫與多愁善感", "被迫營業的假面微笑", "身體與心靈的過度勞累", "日復一日的乏味與麻木", "試圖討好所有人的緊繃感"],
@@ -180,14 +304,12 @@
 
     function showQuestion() {
         const optionsContainer = document.getElementById('options-container');
+        if (!optionsContainer) return; 
         optionsContainer.innerHTML = '';
         const navBtn = document.getElementById('back-nav-btn');
 
-        if (currentIdx === 0) {
-            navBtn.innerText = "← 返回封面";
-        } else {
-            navBtn.innerText = "← 回到上一題";
-        }
+        if (currentIdx === 0) { navBtn.innerText = "← 返回封面"; } 
+        else { navBtn.innerText = "← 回到上一題"; }
 
         if (currentIdx < questions.length) {
             document.getElementById('progress-text').innerText = `PHASE 2: 負能量提煉中 | 問題 ${currentIdx + 1} / 10`;
@@ -228,7 +350,7 @@
 
     function handleBackNavigation() {
         if (currentIdx === 0) {
-            window.location.href = "cover.html";
+            window.location.href = "./cover.html";
         } else {
             currentIdx--;
             const lastAddedScore = scoreHistory.pop();
@@ -241,18 +363,14 @@
         totalScore = 0;
         currentIdx = 0;
         scoreHistory = [];
-        window.location.href = "cover.html";
+        window.location.href = "./cover.html";
     }
 
-    // 答題結束，計算分數並喚起 AI 辨識
     function showResult() {
         document.getElementById('quiz-page').style.display = 'none';
         document.getElementById('result-page').style.display = 'block';
 
-        let color = "white";
-        let charName = "";
-        let quote = "";
-        let hexColor = "#ffffff";
+        let color = "white"; let charName = ""; let quote = ""; let hexColor = "#ffffff";
 
         if (totalScore >= 71) { color = "red"; charName = "大同電鍋"; hexColor = "#F44336"; quote = "「心裡一把火,飯都熟了。今天誰敢惹我,我就送他去『大同』世界。」"; }
         else if (totalScore >= 62) { color = "yellow"; charName = "垃圾車"; hexColor = "#FFEB3B"; quote = "「大腦塞滿垃圾資訊,逼逼逼!好想把自己跟著垃圾車一起載走...」"; }
@@ -270,16 +388,12 @@
         document.getElementById('char-name').innerText = `核心化身：${charName}`;
         document.getElementById('quote-text').innerText = quote;
 
-        // ✨【核心連動】動態 import 前端 app.js 模組，並將算出的顏色直接送入黑眼圈定位核心
-        import('./app.js').then(module => {
-            module.onQuizFinal(color);
-        }).catch(err => {
-            console.error("載入 AI 追蹤模組失敗:", err);
-        });
+        // 啟動 AR 鏡頭追蹤
+        startTrackingAR(color);
     }
 
-    // 啟動問答
-    showQuestion();
+    // 網頁一開，先執行 AI 初始化
+    window.addEventListener("DOMContentLoaded", initAiCore);
 </script>
 </body>
 </html>
