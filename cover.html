@@ -1,104 +1,181 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>眼前的黑不是黑</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #0b0b0b;
-            color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            user-select: none;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>眼前的黑不是黑</title>
+  <style>
+    /* 🌟 煙霧底層防線：鎖死純黑，防止外圍泛白 */
+    html {
+      background-color: #0b0b0b;
+    }
 
-        .cover-container {
-            text-align: center;
-            max-width: 600px;
-            width: 90%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+    }
 
-        .logo-area {
-            position: relative;
-            width: 280px;
-            height: 280px;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      user-select: none;
+      background-color: transparent; /* 讓底層煙霧透上來 */
+    }
 
-        .cover-art {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            filter: drop-shadow(0 0 24px rgba(255, 221, 103, 0.18));
-        }
+    /* ==========================================
+       💨 封面頁：純白濃郁迷霧特效 (徹底洗去黃色調)
+       ========================================== */
+    .smoke-bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: -1;
+      pointer-events: none;
+      background-color: #050505; /* 用極致深黑，把純白煙霧的厚度對比撐出來 */
+    }
 
-        /* 標題與內文 */
-        h1 {
-            font-size: 48px;
-            font-weight: 900;
-            color: #ffdd67;
-            letter-spacing: 4px;
-            margin: 10px 0 20px 0;
-            text-shadow: 0 0 20px rgba(255, 221, 103, 0.3);
-        }
+    .smoke-layer {
+      position: absolute;
+      width: 180%;
+      height: 180%;
+      top: -40%;
+      left: -40%;
+      /* 🌟 核心修正：全部換成 rgba(255, 255, 255) 純白色通道，並拉高濃度 */
+      background: 
+        radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 75% 65%, rgba(255, 255, 255, 0.09) 0%, transparent 60%),
+        linear-gradient(to right, transparent, rgba(255, 255, 255, 0.04) 35%, rgba(255, 255, 255, 0.07) 65%, transparent);
+      filter: blur(55px); /* 維持絲滑的羽化感 */
+      pointer-events: none;
+    }
 
-        .subtitle {
-            font-size: 16px;
-            color: #888888;
-            letter-spacing: 6px;
-            margin-bottom: 50px;
-            font-weight: 300;
-        }
+    /* 第一層迷霧 */
+    .smoke-1 {
+      opacity: 0.9;
+      animation: smokeDrift 40s ease-in-out infinite;
+    }
 
-        /* 進入按鈕 */
-        .start-btn {
-            background-color: transparent;
-            color: #ffdd67;
-            border: 2px solid #ffdd67;
-            padding: 16px 50px;
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-            box-shadow: 0 0 15px rgba(255, 221, 103, 0.1);
-        }
+    /* 第二層迷霧 */
+    .smoke-2 {
+      transform: scale(1.3) rotate(45deg);
+      opacity: 0.8;
+      animation: smokeDrift 28s ease-in-out infinite reverse;
+    }
 
-        .start-btn:hover {
-            background-color: #ffdd67;
-            color: #0b0b0b;
-            box-shadow: 0 0 30px #ffdd67;
-            transform: scale(1.05);
-        }
+    /* 第三層迷霧 */
+    .smoke-3 {
+      transform: scale(1.1) rotate(-20deg);
+      opacity: 0.7;
+      animation: smokeDrift 20s ease-in-out infinite;
+    }
 
-        /* 右下角標語 */
-        .footer-tag {
-            position: absolute;
-            bottom: 30px;
-            right: 40px;
-            font-size: 13px;
-            color: #444444;
-            letter-spacing: 2px;
-            font-style: italic;
-        }
+    @keyframes smokeDrift {
+      0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      33% { transform: translate(5%, -7%) scale(1.12) rotate(6deg); }
+      66% { transform: translate(-6%, 5%) scale(0.92) rotate(-6deg); }
+      100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    }
+    .cover-container {
+      text-align: center;
+      max-width: 600px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
 
-    </style>
+    .logo-area {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cover-art {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 24px rgba(255, 221, 103, 0.18));
+    }
+
+    h1 {
+      font-size: 48px;
+      font-weight: 900;
+      color: #ffdd67;
+      letter-spacing: 4px;
+      margin: 10px 0 20px 0;
+      text-shadow: 0 0 20px rgba(255, 221, 103, 0.3);
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #888888;
+      letter-spacing: 6px;
+      margin-bottom: 50px;
+      font-weight: 300;
+    }
+
+    .start-btn {
+      background-color: transparent;
+      color: #ffdd67;
+      border: 2px solid #ffdd67;
+      padding: 16px 50px;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 4px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: 0 0 15px rgba(255, 221, 103, 0.1);
+    }
+
+    .start-btn:hover {
+      background-color: #ffdd67;
+      color: #0b0b0b;
+      box-shadow: 0 0 30px #ffdd67;
+      transform: scale(1.05);
+    }
+
+    .footer-tag {
+      position: absolute;
+      bottom: 30px;
+      right: 40px;
+      font-size: 13px;
+      color: #444444;
+      letter-spacing: 2px;
+      font-style: italic;
+      z-index: 2;
+    }
+  </style>
 </head>
 <body>
+
+    <div class="smoke-bg-container">
+      <div class="smoke-layer smoke-1"></div>
+      <div class="smoke-layer smoke-2"></div>
+      <div class="smoke-layer smoke-3"></div>
+    </div>
+
+    <audio id="cover-bgm" loop autoplay>
+      <source src="./BGM.mp4" type="audio/mp3">
+    </audio>
 
     <div class="cover-container">
         <div class="logo-area">
@@ -114,8 +191,18 @@
     <div class="footer-tag">「進來前滿臉疲容，出去後負負得正」</div>
 
     <script>
-        // 跳轉到同一個資料夾下的 index.html
         function navigateToQuiz() {
+            const bgmPlayer = document.getElementById('cover-bgm');
+            
+            // 🌟 在跳轉的微秒瞬間，偷偷記下當前的秒數
+            if (bgmPlayer) {
+                localStorage.setItem('bgm_current_time', bgmPlayer.currentTime);
+            }
+
+            // 通知 index.html 開啟自動播放
+            localStorage.setItem('midnight-alchemy-music-auto-start', 'true');
+
+            // 執行跳轉
             window.location.href = "./index.html";
         }
     </script>
