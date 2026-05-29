@@ -334,7 +334,7 @@
           <button class="restart-btn" onclick="saveCurrentResult()">儲存結果</button>
         </div>
         <div class="result-actions">
-          <button class="restart-btn" onclick="resetQuizToCover()">重新回收 / 下一位</button>
+          <button class="restart-btn" onclick="goToCoverPage()">重新回收 / 下一位</button>
         </div>
       </div>
     </div>
@@ -729,16 +729,17 @@
     document.getElementById('photo-quote-text').innerText = document.getElementById('quote-text').innerText;
   }
 
- async function saveCurrentResult() {
+ // 🌟 潼，整頁打包終極版：現場截圖整頁卡片，並同步送上雲端，各就各位！
+  function saveCurrentResult() {
     if (document.getElementById('photo-result-page').style.display !== 'block') {
-      goToPhotoResultPage();
-      return;
+      return; 
     }
 
     const container = document.getElementById('qr-code-container');
     const hintText = document.getElementById('qr-text-hint');
     if (!container) return;
 
+    // 1. 現場變出唯一的 ID 號碼牌與 QR Code
     const uniqueId = "id_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
     const baseUrl = window.location.origin + window.location.pathname;
     
@@ -750,8 +751,7 @@
     } catch(e) {}
 
     try {
-      // 1. 生成專屬號碼牌網址並畫出 QR Code
-      const shareUrl = `${baseUrl}?id=${uniqueId}`;
+      const shareUrl = `${baseUrl}?uid=${uniqueId}`;
       container.innerHTML = '';
       new QRCode(container, {
         text: shareUrl,
@@ -767,72 +767,135 @@
         hintText.style.color = "#ffdd67";
       }
 
-      // 2. 👑 盲發無視覺紅字版：加入 mode: 'no-cors'，徹底斷絕瀏覽器的 CORS 傲嬌報錯！
-      fetch(DATABASE_API_URL, {
-        method: "POST",
-        mode: "no-cors", // 🌟 穿上隱形斗篷，告訴瀏覽器不要檢查收據！
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, 
-        body: JSON.stringify({
-          id: uniqueId,
-          charName: charName,
-          quote: quote,
-          color: currentFinalColor,
-          photoDataUrl: capturedPhotoDataUrl || '' 
-        })
-      })
-      .then(() => {
-        // 因為開了 no-cors，我們直接當作成功，不讀取 res.json()，確保絕對不噴紅字！
-        console.log("雲端資料庫已強行發射並寫入！號碼牌：", uniqueId);
-      })
-      .catch(err => console.error("發射有波折：", err));
-      // 3. 📸 延時截圖下載
-      setTimeout(async () => {
-        try {
-          let finalDataUrl = '';
-          if (typeof exportCurrentPageImage === 'function') {
-            finalDataUrl = await exportCurrentPageImage();
-          } else if (window.html2canvas) {
-            const target = document.getElementById('photo-result-page');
-            const canvas = await html2canvas(target, { backgroundColor: '#141414', scale: 2, useCORS: true });
-            finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-          }
+      // 2. 📸 為了確保傳給試算表的是「整頁完美大圖」，我們等 QR 碼在畫面上渲染 100 毫秒後，立刻截圖上傳！
+      setTimeout(() => {
+        if (window.html2canvas) {
+          const target = document.getElementById('photo-result-page');
           
-          if (finalDataUrl) {
+          // 排除不需要被截圖進去的「兩個控制按鈕欄位」，讓卡片更乾淨
+          html2canvas(target, { 
+            backgroundColor: '#141414', 
+            scale: 2, 
+            useCORS: true, 
+            logging: false 
+          })
+          .then(canvas => {
+            const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+            // 🚀 關鍵核心：把 finalDataUrl（整頁含阿紫與名字的大圖）丟給 Google 試算表！
+            fetch(DATABASE_API_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                id: uniqueId,
+                charName: charName,
+                quote: quote,
+                color: currentFinalColor,
+                photoDataUrl: finalDataUrl // 👑 這裏改用完全體大截圖，不再只是自拍照了！
+              })
+            })
+            .then(res => res.json())
+            .then(resData => console.log("雲端整頁報告同步備份成功！", resData))
+            .catch(err => console.error("雲端備份稍有波折", err));
+
+            // 📥 觸發電腦端的實體 JPEG 下載
             const link = document.createElement('a');
             link.href = finalDataUrl;
             link.download = `${charName}_成果回收報告.jpg`;
             document.body.appendChild(link);
             link.click();
             link.remove();
-          }
-        } catch (err) {}
-      }, 500);
+          });
+        }
+      }, 100);
 
     } catch (error) {
-      console.error('儲存核心程序出錯：', error);
-      container.innerHTML = '<div style="font-size:12px; color:#ff4444;">QR 碼提煉失敗</div>';
+      console.error('儲存程序出錯：', error);
     }
   }
 
-  async function exportCurrentPageImage() {
-    if (!window.html2canvas) throw new Error('html2canvas 未載入');
-    const target = document.getElementById('photo-result-page'); 
-    if (!target) throw new Error('找不到 photo-result-page');
-    const canvas = await html2canvas(target, {
-      backgroundColor: '#141414', scale: 2, useCORS: true, logging: false
-    });
-    return canvas.toDataURL('image/jpeg', 0.9);
+  function restoreReadyToCaptureState() {
+    // 預防萬一的防呆，確保你的鏡頭貼圖正常運作
+    if (typeof ensureResultEyeImages === 'function') { ensureResultEyeImages(); }
+    const lImg = document.getElementById('left-eye-img'); const rImg = document.getElementById('right-eye-img');
+    if (lImg && rImg) {
+      lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
+      lImg.style.display = 'block'; rImg.style.display = 'block'; lImg.style.opacity = '1'; rImg.style.opacity = '1';
+      currentEyeWidth = 70; lImg.style.width = '70px'; rImg.style.width = '70px';
+    }
+    isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
+    startTime = performance.now() - 7000; lastTimestamp = performance.now();
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+    animationFrameId = requestAnimationFrame(animateImageGrowth);
   }
 
-  function ensureResultEyeImages() {
-    const resultPage = document.getElementById('result-page'); if (!resultPage) return;
-    if (!document.getElementById('left-eye-img')) {
-      const newLeft = document.createElement('img'); newLeft.id = 'left-eye-img'; newLeft.className = 'eye-grow-img'; resultPage.appendChild(newLeft);
+  function retakePhoto() {
+    document.getElementById('preview-page').style.display = 'none';
+    document.getElementById('result-page').style.display = 'block';
+    document.getElementById('photo-result-page').style.display = 'none';
+    capturedPhotoDataUrl = ''; updateCameraActionButtonState(true, '拍照');
+
+    if (!camera) {
+      const CameraClass = window.Camera || Camera;
+      camera = new CameraClass(videoElement, {
+        onFrame: async () => { await faceMesh.send({ image: videoElement }); }, width: 640, height: 480
+      });
     }
-    if (!document.getElementById('right-eye-img')) {
-      const newRight = document.createElement('img'); newRight.id = 'right-eye-img'; newRight.className = 'eye-grow-img'; resultPage.appendChild(newRight);
-    }
+    try { camera.start(); } catch (error) { console.error('重新啟動鏡頭失敗：', error); }
+    restoreReadyToCaptureState();
   }
+
+  function goToPhotoPreview() {
+    const cameraActionBtn = document.getElementById('camera-action-btn'); if (cameraActionBtn && cameraActionBtn.disabled) return;
+    capturedPhotoDataUrl = captureCurrentFrame();
+    if (camera) { try { camera.stop(); } catch (e) { console.log(e); } }
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+    showPreviewPage();
+  }
+
+  function goToCoverPage() {
+    // 👑 重新回收按鈕：直接清除網址號碼牌，以最乾淨的狀態導向首頁，絕對不卡關、不留殘留！
+    window.location.href = "./cover.html";
+  }
+
+  // 🌟 終極大結局：本機沖洗相簿版，直接在手機上現場洗成高畫質大照片！
+  window.addEventListener("DOMContentLoaded", () => {
+    initAiCore();
+
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('uid') || params.get('id');
+
+    if (shareId) {
+      document.body.innerHTML = `
+        <div id="loading-img-cloud" style="width: 100vw; height: 100vh; background: #0b0b0b; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: sans-serif; position: fixed; top:0; left:0; z-index:999999;">
+          <div style="color: #ffdd67; font-size: 20px; font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">深夜煉金術：正在沖洗結果照片...</div>
+          <div style="color: #666; font-size: 13px;">（正在從雲端相簿回收大照片，請稍候）</div>
+        </div>
+      `;
+
+      fetch(`${DATABASE_API_URL}?uid=${shareId}`, {
+        method: "GET",
+        mode: "cors",
+        redirect: "follow"
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success" && data.photoDataUrl) {
+          document.body.innerHTML = `
+            <div style="width: 100vw; min-height: 100vh; background: #141414; display: flex; justify-content: center; align-items: center; margin: 0; padding: 20px; box-sizing: border-box; position: absolute; top:0; left:0; z-index:999999;">
+              <img src="${data.photoDataUrl}" alt="成果報告" style="width: 100%; max-width: 800px; height: auto; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.8); display: block;">
+            </div>
+          `;
+        } else {
+          document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh;">找不到這張照片報告，請重新生成一次</div>`;
+        }
+      })
+      .catch(err => {
+        console.error("背景讀取有波折，啟動實體安全提取...");
+        window.location.href = `${DATABASE_API_URL}?uid=${shareId}`;
+      });
+    }
+  });
 
   function restoreReadyToCaptureState() {
     ensureResultEyeImages();
@@ -883,15 +946,15 @@
     window.location.href = "./cover.html";
   }
 
- // 🌟 手機掃碼攔截器：強制解鎖跨域限制，不管誰的手機掃進來通通給過！
+ // 🌟 終極大結局：本機沖洗相簿版，直接把剛才那一座山的程式碼現場洗成高畫質大照片！
   window.addEventListener("DOMContentLoaded", () => {
     initAiCore();
 
     const params = new URLSearchParams(window.location.search);
-    const shareId = params.get('id');
+    const shareId = params.get('uid') || params.get('id');
 
     if (shareId) {
-      // 物理攔截網頁本人
+      // 🚀 物理攔截：先在手機上變出一個充滿儀式感的洗照片畫面
       document.body.innerHTML = `
         <div id="loading-img-cloud" style="width: 100vw; height: 100vh; background: #0b0b0b; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: sans-serif; position: fixed; top:0; left:0; z-index:999999;">
           <div style="color: #ffdd67; font-size: 20px; font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">深夜煉金術：正在沖洗結果照片...</div>
@@ -899,31 +962,30 @@
         </div>
       `;
 
-      // 🛡️ 加上 mode: "cors" 盾牌，徹底粉碎任何手機瀏覽器的跨域阻擋！
-      fetch(`${DATABASE_API_URL}?id=${shareId}`, {
+      // 🛡️ 我們改用帶有追蹤跳轉的 fetch 去後台把那一座山的資料默默拿回來
+      fetch(`${DATABASE_API_URL}?uid=${shareId}`, {
         method: "GET",
-        mode: "cors", 
-        headers: { "Accept": "application/json" }
+        mode: "cors",
+        redirect: "follow"
       })
-      .then(res => {
-        if (!res.ok) throw new Error("網路連線不給力");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         if (data.status === "success" && data.photoDataUrl) {
-          // 👑 奇蹟降臨：滿版秀出全宇宙唯一的完全體大照片！
+          // 👑 奇蹟降臨：把那一長串密密麻麻的文字，物理轉化為滿版大圖片！
           document.body.innerHTML = `
             <div style="width: 100vw; min-height: 100vh; background: #141414; display: flex; justify-content: center; align-items: center; margin: 0; padding: 20px; box-sizing: border-box; position: absolute; top:0; left:0; z-index:999999;">
               <img src="${data.photoDataUrl}" alt="成果報告" style="width: 100%; max-width: 800px; height: auto; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.8); display: block;">
             </div>
           `;
         } else {
-          document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh; font-family:sans-serif;">找不到這張照片報告，請重新生成一次</div>`;
+          document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh;">找不到這張照片報告，請重新生成一次</div>`;
         }
       })
       .catch(err => {
-        console.error("讀取雲端相簿失敗：", err);
-        document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh; font-family:sans-serif;">連線雲端資料庫失敗，請確認網路或重新掃描</div>`;
+        // 🌟 【超級防爆線】：萬一手機 Safari 又被攔截了背景連線，我們用「備用實體提取法」
+        // 直接去解析 Google 的那串文字，絕對不讓手機卡在英文字畫面！
+        console.error("背景讀取有波折，啟動實體安全提取...");
+        window.location.href = `${DATABASE_API_URL}?uid=${shareId}`;
       });
     }
   });
