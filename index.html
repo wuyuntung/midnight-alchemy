@@ -196,7 +196,7 @@
       position: fixed; 
       z-index: 9998; 
       transform: translate(-50%, -50%); 
-      width: 0px; 
+      width: 130px; 
       height: auto;
       pointer-events: none; 
       display: none; 
@@ -353,8 +353,8 @@
   let detectedColor = 'white';
   let capturedPhotoDataUrl = '';
 
-  let currentEyeWidth = 100; 
-  const maxEyeWidth = 4000; 
+  let currentEyeWidth = 130; 
+  const maxEyeWidth = 5200; 
   const growSpeedPerSecond = 180;
 
   let hasLockedCoordinates = false;
@@ -474,7 +474,7 @@
   }
 
   function startTrackingAR(finalColor) {
-    currentFinalColor = finalColor; currentEyeWidth = 70; hasLockedCoordinates = false; isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = false; capturedPhotoDataUrl = '';
+    currentFinalColor = finalColor; currentEyeWidth = 130; hasLockedCoordinates = false; isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = false; capturedPhotoDataUrl = '';
     updateCameraActionButtonState(false, '黑眼圈IP生成中...');
     
     const now = performance.now(); lastTimestamp = now; startTime = now;
@@ -483,7 +483,7 @@
     const lImg = document.getElementById('left-eye-img');
     const rImg = document.getElementById('right-eye-img');
     lImg.src = colorPatternsLeft[finalColor]; rImg.src = colorPatternsRight[finalColor];
-    lImg.style.width = '70px'; rImg.style.width = '70px'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+    lImg.style.width = '130px'; rImg.style.width = '130px'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     lImg.style.display = 'none'; rImg.style.display = 'none';
 
     document.getElementById("tracking-container").style.display = "block";
@@ -515,23 +515,23 @@
       if (fadeProgress < 1) {
         lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 70;
       } else if (fadeElapsed < fadeDuration + pauseDuration) {
-        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 70;
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 130;
       } else if (hasCompletedSequence) {
-        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 70;
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 130;
         updateCameraActionButtonState(true, '拍照');
       } else if (isShrinking) {
         lImg.style.opacity = '1'; rImg.style.opacity = '1';
         const shrinkProgress = Math.min((currentTimestamp - shrinkStartTimestamp) / shrinkDuration, 1);
         currentEyeWidth = maxEyeWidth - (maxEyeWidth - 70) * shrinkProgress;
         if (shrinkProgress >= 1) {
-          currentEyeWidth = 70; isShrinking = false; hasCompletedSequence = true;
+          currentEyeWidth = 130; isShrinking = false; hasCompletedSequence = true;
           lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
           updateCameraActionButtonState(true, '拍照');
         }
       } else {
         lImg.style.opacity = '1'; rImg.style.opacity = '1';
         const growProgress = Math.min((currentTimestamp - (startTime + initialWaitDuration + fadeDuration + pauseDuration)) / shrinkDuration, 1);
-        currentEyeWidth = 70 + (maxEyeWidth - 70) * growProgress;
+        currentEyeWidth = 130 + (maxEyeWidth - 130) * growProgress;
         if (growProgress >= 1) {
           currentEyeWidth = maxEyeWidth;
           lImg.src = colorPatternsAltLeft[currentFinalColor]; rImg.src = colorPatternsAltRight[currentFinalColor];
@@ -539,7 +539,7 @@
         }
       }
     } else {
-      currentEyeWidth = 70; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+      currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     }
 
     lImg.style.width = currentEyeWidth + 'px'; rImg.style.width = currentEyeWidth + 'px';
