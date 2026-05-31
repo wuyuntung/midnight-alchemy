@@ -672,8 +672,9 @@
         const drawWidth = scaledWidth;
         const drawHeight = drawWidth * aspect;
         const isRightEye = imgElement === rImg;
+        const downwardShift = currentEyeWidth * 0.5;
         const sourceX = (isRightEye ? eyePositions.rx : eyePositions.lx) - rect.left;
-        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) - rect.top;
+        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) + downwardShift - rect.top;
         const canvasX = sourceX * (canvasElement.width / rect.width);
         const canvasY = sourceY * (canvasElement.height / rect.height);
         tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
