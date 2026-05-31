@@ -657,25 +657,22 @@
 
       const lImg = document.getElementById('left-eye-img');
       const rImg = document.getElementById('right-eye-img');
-      const rect = canvasElement.getBoundingClientRect();
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const scaleX = canvasElement.width / canvasRect.width;
+      const scaleY = canvasElement.height / canvasRect.height;
 
       const drawOverlay = (imgElement) => {
         if (!imgElement || !imgElement.src || imgElement.style.display === 'none' || imgElement.style.opacity === '0') return;
-        const scaledWidth = parseFloat(imgElement.style.width || '0');
-        if (!scaledWidth) return;
-        const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
-        const drawWidth = scaledWidth;
-        const drawHeight = drawWidth * aspect;
-        const isRightEye = imgElement === rImg;
-        const inwardShift = Math.min(currentEyeWidth * -0.15, 60);
-        const sourceX = (isRightEye ? eyePositions.rx - inwardShift : eyePositions.lx + inwardShift) - rect.left;
-        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) + 10 - rect.top;
-        const canvasX = sourceX * (canvasElement.width / rect.width);
-        const canvasY = sourceY * (canvasElement.height / rect.height);
-        tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
+        const imgRect = imgElement.getBoundingClientRect();
+        const drawWidth = imgRect.width * scaleX;
+        const drawHeight = imgRect.height * scaleY;
+        const canvasX = (imgRect.left - canvasRect.left) * scaleX;
+        const canvasY = (imgRect.top - canvasRect.top) * scaleY;
+        tempCtx.drawImage(imgElement, canvasX, canvasY, drawWidth, drawHeight);
       };
 
-      drawOverlay(lImg); drawOverlay(rImg);
+      drawOverlay(lImg);
+      drawOverlay(rImg);
       return tempCanvas.toDataURL('image/png');
     } catch (error) { console.error('拍照失敗：', error); return ''; }
   }
