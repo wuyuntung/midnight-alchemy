@@ -518,6 +518,7 @@
           currentEyeWidth = maxEyeWidth;
           lImg.src = colorPatternsAltLeft[currentFinalColor]; rImg.src = colorPatternsAltRight[currentFinalColor];
           isShrinking = true; shrinkStartTimestamp = currentTimestamp;
+          playAppearSound();
         }
       }
     } else {
@@ -617,7 +618,7 @@
   }
 
   function handleBackNavigation() {
-    playQuizSound();
+    playActionSound();
     if (currentIdx === 0) {
       window.location.href = "./cover.html";
     } else {
@@ -722,7 +723,7 @@
   }
 
   function saveCurrentResult() {
-    playQuizSound();
+    playActionSound();
     if (document.getElementById('photo-result-page').style.display !== 'block') {
       return; 
     }
@@ -877,7 +878,7 @@
   }
 
   function goToCoverPage() {
-    playQuizSound();
+    playActionSound();
     window.parent.postMessage("CLOSE_QUIZ_AND_GO_HOME", "*");
   }
 
@@ -955,6 +956,16 @@
       if (audio) {
         audio.currentTime = 0;
         audio.play().catch(e => console.log(e));
+      }
+    }
+  }
+  // 🌟 潼，新增這個「貼圖登場」跨網頁遙控器：
+  function playAppearSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('appear-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log("登場音效解鎖:", e));
       }
     }
   }
