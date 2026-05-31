@@ -11,7 +11,6 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
   
   <style>
-    /* 🌟 煙霧底層防線：鎖死純黑 */
     html {
       background-color: #0b0b0b;
     }
@@ -134,11 +133,69 @@
       background-color: rgba(255, 221, 103, 0.05);
     }
 
-    /* 🌟 固定跨網頁遙控按鈕樣式 */
-    #bgm-ctrl {
-      position: fixed; top: 20px; right: 20px; z-index: 99999999 !important; background: rgba(28,28,28,0.85); border: 1px solid #ffdd67; color: #ffdd67; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; letter-spacing: 1px; transition: all 0.2s; pointer-events: auto !important;
+    .bgm-panel-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 99999999 !important; 
+      display: flex;
+      align-items: center;
+      gap: 0px; 
+      background: rgba(28,28,28,0.85); 
+      border: 1px solid #ffdd67; 
+      padding: 8px 16px;
+      border-radius: 20px; 
+      box-shadow: none;
+      cursor: pointer;
+      pointer-events: auto !important;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
     }
-    #bgm-ctrl:hover { background: #ffdd67; color: #0b0b0b; }
+
+    #bgm-ctrl {
+      color: #ffdd67;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    /* 隱形微型滑桿：預設完全消失 */
+    .volume-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 0px;
+      height: 4px;
+      background: #444;
+      border-radius: 2px;
+      outline: none;
+      opacity: 0;
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin 0.3s ease;
+      cursor: pointer;
+    }
+
+    /* 當滑鼠移入面板時，金色滑桿展開 */
+    .bgm-panel-container:hover {
+      padding: 8px 16px 8px 12px;     
+      gap: 10px;                     
+      box-shadow: 0 0 15px rgba(255, 221, 103, 0.2);
+    }
+
+    .bgm-panel-container:hover .volume-slider {
+      width: 75px;                   
+      opacity: 1;                    
+      margin-left: 2px;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ffdd67;
+      box-shadow: 0 0 4px #ffdd67;
+    }
 
     .restart-btn {
       display: inline-block;
@@ -163,7 +220,6 @@
       color: #000000;
       box-shadow: 0 0 25px #ffdd67;
     }
-
     .restart-btn:disabled {
       cursor: not-allowed;
       opacity: 0.5;
@@ -271,7 +327,10 @@
   <div class="smoke-layer smoke-3"></div>
 </div>
 
-<div id="bgm-ctrl" onclick="toggleOuterBgm()">🎵 BGM: ON</div>
+<div class="bgm-panel-container">
+  <div id="bgm-ctrl" onclick="toggleOuterBgm()">🎵 BGM: ON</div>
+  <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50" oninput="adjustBgmVolume(this.value)">
+</div>
 
 <div class="container">
   <div id="ai-loading-mask">
@@ -356,8 +415,8 @@
   let detectedColor = 'white';
   let capturedPhotoDataUrl = '';
 
-  let currentEyeWidth = 130; 
-  const maxEyeWidth = 5200; 
+  let currentEyeWidth = 140; 
+  const maxEyeWidth = 15000; 
   const growSpeedPerSecond = 180;
 
   let hasLockedCoordinates = false;
@@ -456,7 +515,7 @@
   }
 
   function startTrackingAR(finalColor) {
-    currentFinalColor = finalColor; currentEyeWidth = 130; hasLockedCoordinates = false; isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = false; capturedPhotoDataUrl = '';
+    currentFinalColor = finalColor; currentEyeWidth = 140; hasLockedCoordinates = false; isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = false; capturedPhotoDataUrl = '';
     updateCameraActionButtonState(false, '黑眼圈IP生成中...');
     
     const now = performance.now(); lastTimestamp = now; startTime = now;
@@ -495,25 +554,25 @@
       const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1);
 
       if (fadeProgress < 1) {
-        lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 130;
+        lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 150;
       } else if (fadeElapsed < fadeDuration + pauseDuration) {
-        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 130;
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 150;
       } else if (hasCompletedSequence) {
-        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 130;
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 60;
         updateCameraActionButtonState(true, '拍照');
       } else if (isShrinking) {
         lImg.style.opacity = '1'; rImg.style.opacity = '1';
         const shrinkProgress = Math.min((currentTimestamp - shrinkStartTimestamp) / shrinkDuration, 1);
-        currentEyeWidth = maxEyeWidth - (maxEyeWidth - 130) * shrinkProgress;
+        currentEyeWidth = maxEyeWidth - (maxEyeWidth + 100) * shrinkProgress;
         if (shrinkProgress >= 1) {
-          currentEyeWidth = 130; isShrinking = false; hasCompletedSequence = true;
+          currentEyeWidth = 150; isShrinking = false; hasCompletedSequence = true;
           lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
           updateCameraActionButtonState(true, '拍照');
         }
       } else {
         lImg.style.opacity = '1'; rImg.style.opacity = '1';
         const growProgress = Math.min((currentTimestamp - (startTime + initialWaitDuration + fadeDuration + pauseDuration)) / shrinkDuration, 1);
-        currentEyeWidth = 130 + (maxEyeWidth - 130) * growProgress;
+        currentEyeWidth = 60 + (maxEyeWidth - 60) * growProgress;
         if (growProgress >= 1) {
           currentEyeWidth = maxEyeWidth;
           lImg.src = colorPatternsAltLeft[currentFinalColor]; rImg.src = colorPatternsAltRight[currentFinalColor];
@@ -522,7 +581,11 @@
         }
       }
     } else {
+<<<<<<< Updated upstream
       currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.none = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+=======
+      currentEyeWidth = 60; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+>>>>>>> Stashed changes
     }
 
     // 🌟 一對一對齊比例，右眼貼圖增幅放大 1.25 倍
@@ -530,12 +593,17 @@
     rImg.style.width = (currentEyeWidth * 1.25) + 'px'; 
 
     if (hasLockedCoordinates) {
+<<<<<<< Updated upstream
       // 🌟 防 iframe 偏位微調
       const inwardShift = Math.min(currentEyeWidth * -0.15, 60); 
       lImg.style.left = eyePositions.lx + inwardShift + 'px'; 
+=======
+      const inwardShift = Math.min(currentEyeWidth * -0.08, 500);
+      lImg.style.left = eyePositions.lx + inwardShift - 10 + 'px'; 
+>>>>>>> Stashed changes
       lImg.style.top = (eyePositions.ly + 10) + 'px'; 
       
-      rImg.style.left = eyePositions.rx - inwardShift + 'px'; 
+      rImg.style.left = eyePositions.rx - inwardShift + 10 + 'px'; 
       rImg.style.top = (eyePositions.ry + 10) + 'px'; 
     }
     animationFrameId = requestAnimationFrame(animateImageGrowth);
@@ -566,7 +634,7 @@
     { q: "2. 在捷運或公車上,你的眼睛 and 手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
     { q: "3. 如果你的工作/課業壓力是一頂帽子,你覺得現在這頂帽子?", a: ["重到快把我的頸椎壓斷了。", "有點大頂,遮住了我前方的視線,讓我有點迷惘。", "顏色太鮮豔了,周圍的人一直在盯著看,讓我好焦慮。", "還算合身,只是戴久了角點悶。"], scores: [8, 6, 4, 2] },
     { q: "4. 當你遇到意見不合的豬隊友時,你內心的第一直覺是?", a: ["火火火!好想直接拍桌大吵一架!", "算了,心好累,你說什麼都對(內心開始擺擺)。", "表面微笑說好,私底下瘋狂跟朋友寫小作文抱怨。", "試圖冷靜分析,找出兩全開美的解決辦法。"], scores: [8, 6, 4, 2] },
-    { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過的痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
+    { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
     { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
     { q: "7. 深夜躺在床上準備睡決時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
     { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈.."], scores: [8, 6, 4, 2] },
@@ -637,7 +705,7 @@
 
     if (totalScore >= 71) { color = "red"; charName = "氣到快炸鍋．老紅"; quote = "死線壓頂，腦袋已經狂冒白煙！再惹我，老子絕對跟你一起跳開關、同歸於盡！"; }
     else if (totalScore >= 62) { color = "yellow"; charName = "資訊垃圾桶．阿黃"; quote = "半夜三點還在刷動態，焦慮早就超載。看著別人的精彩生活，真想把自己當垃圾倒掉。"; }
-    else if (totalScore >= 53) { color = "blue"; charName = "萬物皆可拖．小藍"; quote = "今天又是 Monday Blue，什麼都想拖啊拖，但又擔心事情做不完，好煩啊！"; }
+    else if (totalScore >= 53) { color = "blue"; charName = "萬物皆可拖．小藍"; quote = "今天幕是 Monday Blue，什麼都想拖啊拖，但又擔心事情做不完，好煩啊！"; }
     else if (totalScore >= 44) { color = "green"; charName = "萬物皆可包．小綠"; quote = "習慣壓抑討好，什麼爛事都往我這裡裝。以為自己萬能，結果日子過得一袋不如一袋。"; }
     else if (totalScore >= 35) { color = "purple"; charName = "想太多的芋圓．阿紫"; quote = "前途沒大富大貴，紫有一片迷茫。昨晚又為未來熬夜芋卒，像顆不知該滾去哪的爛芋圓。"; }
     else if (totalScore >= 26) { color = "orange"; charName = "被迫營業中．阿餅"; quote = "累到內餡都要碎了，還是得擠出假笑。人生沒有花好月圓，笑著笑著就流淚了。"; }
@@ -691,6 +759,31 @@
     document.getElementById('photo-result-page').style.display = 'none';
     const previewImg = document.getElementById('preview-photo-img');
     if (previewImg) { previewImg.src = capturedPhotoDataUrl; }
+  }
+
+  function getActiveBgmPlayer() {
+    if (window.parent && window.parent.document) {
+      const outerBgm = window.parent.document.getElementById('cover-bgm');
+      if (outerBgm) return outerBgm;
+    }
+    return document.getElementById('bgm-player') || document.getElementById('cover-bgm');
+  }
+
+  function adjustBgmVolume(value) {
+    const activeBgm = getActiveBgmPlayer();
+    if (activeBgm) {
+      activeBgm.volume = parseFloat(value) / 100;
+      
+      const localBtn = document.getElementById('bgm-ctrl');
+      if (localBtn) {
+        if (value == 0) {
+          localBtn.innerText = "🎵 BGM: OFF";
+        } else {
+          localBtn.innerText = "🎵 BGM: ON";
+        }
+      }
+      localStorage.setItem('user_bgm_volume', value);
+    }
   }
 
   function applySharedState(state) {
@@ -852,7 +945,7 @@
     if (lImg && rImg) {
       lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
       lImg.style.display = 'block'; rImg.style.display = 'block'; lImg.style.opacity = '1'; rImg.style.opacity = '1';
-      currentEyeWidth = 130; lImg.style.width = '130px'; rImg.style.width = '130px'; 
+      currentEyeWidth = 150; lImg.style.width = '150px'; rImg.style.width = '150px'; 
     }
     isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
     startTime = performance.now() - 7000; lastTimestamp = performance.now();
@@ -886,6 +979,7 @@
   function toggleOuterBgm() {
     playActionSound();
     const localBtn = document.getElementById('bgm-ctrl');
+    const volumeSlider = document.getElementById('volume-slider');
     if (!localBtn) return;
     if (window.parent) {
       const outerBgm = window.parent.document.getElementById('cover-bgm');
@@ -893,6 +987,7 @@
         if (outerBgm.paused) {
           outerBgm.play();
           localBtn.innerText = "🎵 BGM: ON";
+          if (volumeSlider) outerBgm.volume = parseFloat(volumeSlider.value) / 100;
         } else {
           outerBgm.pause();
           localBtn.innerText = "🎵 BGM: OFF";
@@ -904,41 +999,31 @@
   window.addEventListener("DOMContentLoaded", () => {
     initAiCore();
 
-    const params = new URLSearchParams(window.location.search);
-    const shareId = params.get('uid') || params.get('id');
-
-    if (shareId) {
-      document.body.innerHTML = `
-        <div id="loading-img-cloud" style="width: 100vw; height: 100vh; background: #0b0b0b; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: sans-serif; position: fixed; top:0; left:0; z-index:999999;">
-          <div style="color: #ffdd67; font-size: 20px; font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">深夜煉金術：正在沖洗結果照片...</div>
-          <div style="color: #666; font-size: 13px;">（正在從雲端相簿回收大照片，請稍候）</div>
-        </div>
-      `;
-
-      fetch(`${DATABASE_API_URL}?uid=${shareId}`, {
-        method: "GET",
-        mode: "cors",
-        redirect: "follow"
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success" && data.photoDataUrl) {
-          document.body.innerHTML = `
-            <div style="width: 100vw; min-height: 100vh; background: #141414; display: flex; justify-content: center; align-items: center; margin: 0; padding: 20px; box-sizing: border-box; position: absolute; top:0; left:0; z-index:999999;">
-              <img src="${data.photoDataUrl}" alt="成果報告" style="width: 100%; max-width: 800px; height: auto; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.8); display: block;">
-            </div>
-          `;
+    setTimeout(() => {
+      const activeBgm = getActiveBgmPlayer();
+      const volumeSlider = document.getElementById('volume-slider');
+      const savedVolume = localStorage.getItem('user_bgm_volume');
+      
+      if (activeBgm && volumeSlider) {
+        if (savedVolume !== null) {
+          activeBgm.volume = parseFloat(savedVolume) / 100;
+          volumeSlider.value = savedVolume;
+          const localBtn = document.getElementById('bgm-ctrl');
+          if (localBtn && savedVolume == 0) {
+            localBtn.innerText = "🎵 BGM: OFF";
+          }
         } else {
-          document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh;">找不到這張照片報告，請重新生成一次</div>`;
+          activeBgm.volume = 0.5;
+          volumeSlider.value = 50;
         }
-      })
-      .catch(err => {
-        console.error("背景讀取有波折，啟動實體安全提取...");
-        window.location.href = `${DATABASE_API_URL}?uid=${shareId}`;
-      });
-    }
+      }
+    }, 300);
   });
+<<<<<<< Updated upstream
   // 🌟 遙控器一：敲擊問答選項音效
+=======
+
+>>>>>>> Stashed changes
   function playQuizSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('quiz-sound');
@@ -949,7 +1034,11 @@
     }
   }
 
+<<<<<<< Updated upstream
   // 🌟 遙控器二：敲擊其他所有功能按鈕的音效
+=======
+  // 功能按鈕音效觸發防線
+>>>>>>> Stashed changes
   function playActionSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('action-sound');
@@ -959,7 +1048,11 @@
       }
     }
   }
+<<<<<<< Updated upstream
   // 🌟 潼，新增這個「貼圖登場」跨網頁遙控器：
+=======
+  
+>>>>>>> Stashed changes
   function playAppearSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('appear-sound');

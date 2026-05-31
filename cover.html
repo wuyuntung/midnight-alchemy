@@ -27,7 +27,7 @@
       margin: 0;
       overflow: hidden;
       user-select: none;
-      background-color: transparent; /* 讓底層煙霧透上來 */
+      background-color: transparent;
     }
 
     /* ==========================================
@@ -217,8 +217,8 @@
             if (event.data === "CLOSE_QUIZ_AND_GO_HOME") {
                 const frame = document.getElementById('quiz-frame-container');
                 if (frame) {
-                    frame.style.display = "none"; // 默默把問答頁收起來
-                    frame.src = "";               // 徹底洗掉問答頁的快取，讓下一個人來是全新乾淨的
+                    frame.style.display = "none";
+                    frame.src = "";               
                 }
             }
         });
