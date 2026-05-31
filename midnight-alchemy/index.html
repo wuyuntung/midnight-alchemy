@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>眼前的黑不是黑</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+  
+  <style>
+    /* 🌟 煙霧底層防線：鎖死純黑 */
+    html {
+      background-color: #0b0b0b;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start; 
+      padding: 40px 0;        
+      box-sizing: border-box;
+      overflow-y: auto;        
+      overflow-x: hidden;
+      background-color: transparent; 
+    }
+    
+    .smoke-bg-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 0; 
+      pointer-events: none; 
+      background-color: #050505; 
+    }
+
+    .smoke-layer {
+      position: absolute;
+      width: 180%;
+      height: 180%;
+      top: -40%;
+      left: -40%;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.11) 0%, transparent 55%),
+        radial-gradient(circle at 80% 75%, rgba(255, 255, 255, 0.08) 0%, transparent 55%),
+        linear-gradient(to right, transparent, rgba(255, 255, 255, 0.03) 30%, rgba(255, 255, 255, 0.06) 70%, transparent);
+      filter: blur(55px);
+      pointer-events: none;
+    }
+
+    .smoke-1 { opacity: 0.9; animation: smokeDrift 40s ease-in-out infinite; }
+    .smoke-2 { transform: scale(1.3) rotate(45deg); opacity: 0.8; animation: smokeDrift 28s ease-in-out infinite reverse; }
+    .smoke-3 { transform: scale(1.1) rotate(-20deg); opacity: 0.7; animation: smokeDrift 20s ease-in-out infinite; }
+
+    @keyframes smokeDrift {
+      0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      33% { transform: translate(5%, -7%) scale(1.12) rotate(6deg); }
+      66% { transform: translate(-6%, 5%) scale(0.92) rotate(-6deg); }
+      100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    }
+    
+    .container {
+      background-color: #141414;
+      padding: 35px 40px;      
+      border-radius: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+      max-width: 850px; 
+      width: 92%;      
+      text-align: center;
+      border: 1px solid #222;
+      position: relative;
+      box-sizing: border-box;
+      margin: 0 auto;          
+      z-index: 2; 
+    }
+    
+    h2 { margin-top: 0; margin-bottom: 25px; color: #ffdd67; font-size: 26px; }
+    .progress { font-size: 14px; color: #666; margin-bottom: 15px; }
+    .question-title { font-size: 20px; margin-bottom: 25px; line-height: 1.4; color: #e0e0e0; }
+    
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 20px; 
+      margin: 10px 0;
+      background-color: #1c1c1c;
+      color: #ddd;
+      border: 2px solid #2c2c2c;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+    .btn:hover { 
+      background-color: #252525; 
+      border-color: #ffdd67; 
+      color: #fff;
+    }
+
+    .nav-actions {
+      margin-top: 25px;
+      border-top: 1px solid #222;
+      padding-top: 15px;
+    }
+    .back-btn {
+      background: transparent;
+      color: #666;
+      border: 1px solid #333;
+      padding: 8px 20px;
+      font-size: 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .back-btn:hover {
+      color: #ffdd67;
+      border-color: #ffdd67;
+      background-color: rgba(255, 221, 103, 0.05);
+    }
+
+    /* 🌟 隱形絲滑懸浮流：讓調音量面板完美偽裝成單一金色按鈕 */
+    .bgm-panel-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 99999999 !important; 
+      display: flex;
+      align-items: center;
+      gap: 0px;                      /* 平常滑桿收起，間距為 0 */
+      background: rgba(28,28,28,0.85); 
+      border: 1px solid #ffdd67; 
+      padding: 8px 16px;             /* 完美維持原本的按鈕體積 */
+      border-radius: 20px; 
+      box-shadow: none;
+      cursor: pointer;
+      pointer-events: auto !important;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+    }
+
+    #bgm-ctrl {
+      color: #ffdd67;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    /* 隱形微型滑桿：預設完全消失 */
+    .volume-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 0px;                     /* 預設寬度鎖死 0 */
+      height: 4px;
+      background: #444;
+      border-radius: 2px;
+      outline: none;
+      opacity: 0;                     /* 預設完全透明 */
+      transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin 0.3s ease;
+      cursor: pointer;
+    }
+
+    /* 當滑鼠移入面板時，金色滑桿展開 */
+    .bgm-panel-container:hover {
+      padding: 8px 16px 8px 12px;     
+      gap: 10px;                     
+      box-shadow: 0 0 15px rgba(255, 221, 103, 0.2);
+    }
+
+    .bgm-panel-container:hover .volume-slider {
+      width: 75px;                   
+      opacity: 1;                    
+      margin-left: 2px;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ffdd67;
+      box-shadow: 0 0 4px #ffdd67;
+    }
+
+    /* 👑 核心還原：最美金色圓角功能按鈕（拍照、確認、重新拍照、功能按鈕通通套用！） */
+    .restart-btn {
+      display: inline-block;
+      background-color: transparent;
+      color: #ffdd67;
+      border: 2px solid #ffdd67;
+      padding: 12px 30px;
+      font-size: 15px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      border-radius: 25px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 15px rgba(255, 221, 103, 0.1);
+      position: relative !important;
+      z-index: 99999 !important; 
+      pointer-events: auto !important;
+    }
+    .restart-btn:hover {
+      background-color: #ffdd67;
+      color: #000000;
+      box-shadow: 0 0 25px #ffdd67;
+    }
+    .restart-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      border-color: #555;
+      color: #999;
+      box-shadow: none;
+    }
+
+    #result-page { display: none; }
+    
+    #result-page #tracking-container {
+      width: 720px !important;   
+      height: 540px !important;  
+      margin: 0 auto !important;
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #result-page #output_canvas {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover; 
+      border-radius: 16px;
+      border: none !important;
+      display: block;
+    }
+    #result-page .restart-btn {
+      display: inline-block !important;
+      margin-top: 20px !important;
+      width: auto !important;
+    }
+
+    .eye-grow-img {
+      position: fixed; 
+      z-index: 9998; 
+      transform: translate(-50%, -50%); 
+      width: 130px; 
+      height: auto;
+      pointer-events: none; 
+      display: none; 
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #preview-page { display: none; text-align: center; padding: 10px 0; }
+    #preview-page #tracking-container {
+      width: 720px !important; height: 540px !important; margin: 0 auto !important; position: relative; border-radius: 16px; overflow: hidden;
+    }
+    #preview-page #preview-photo-img {
+      width: 720px !important; height: 540px !important; object-fit: cover; border-radius: 16px; border: none !important; display: block;
+    }
+    #preview-page .preview-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    #preview-page .restart-btn { display: inline-block !important; margin-top: 0 !important; width: auto !important; }
+
+    #photo-result-page { display: none; text-align: center; padding: 10px 0; }
+    .display-character-img { width: 100%; max-width: 450px; height: auto; margin: 0 auto; display: block; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); object-fit: contain; }
+    .display-photo-result-img { width: 320px; height: 240px; object-fit: cover; margin: 0 auto; display: block; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
+
+    .photo-result-shell { width: min(100%, 1180px); display: grid; grid-template-columns: minmax(320px, 1.1fr) minmax(280px, 0.9fr); gap: 24px; align-items: center; }
+    .result-media-column, .result-info-column { display: flex; flex-direction: column; gap: 18px; justify-content: center; }
+    .result-media-card { background: rgba(255,255,255,0.02); border: 1px solid #222; border-radius: 22px; padding: 16px; }
+
+    #photo-page-title { margin: 0; text-align: left; }
+    #photo-quote-text { color: #e0e0e0; font-style: italic; margin: 0; font-size: 16px; line-height: 1.6; text-align: left; }
+
+    .qr-section { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+    
+    #qr-code-container { 
+      width: 156px; 
+      height: 156px; 
+      background: rgba(255,255,255,0.04); 
+      border: 1px dashed #444; 
+      border-radius: 18px; 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      box-sizing: border-box;
+    }
+    .qr-copy { color: #888; font-size: 13px; line-height: 1.6; max-width: 90%; margin: 0; text-align: left; }
+
+    #ai-loading-mask {
+      position: absolute; top:0; left:0; width:100%; height:100%; background: #141414; z-index: 1000; display: flex; justify-content: center; align-items: center; border-radius: 24px; flex-direction: column;
+    }
+
+    @media (max-width: 900px) {
+      .photo-result-shell { grid-template-columns: 1fr; }
+      .result-actions, .qr-section { justify-content: center; align-items: center; }
+      #photo-page-title, #photo-quote-text, .qr-copy { text-align: center; }
+      #result-page #tracking-container, #preview-page #tracking-container, #preview-page #preview-photo-img {
+        width: 100% !important; max-width: 320px !important; height: 240px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="smoke-bg-container">
+  <div class="smoke-layer smoke-1"></div>
+  <div class="smoke-layer smoke-2"></div>
+  <div class="smoke-layer smoke-3"></div>
+</div>
+
+<div class="bgm-panel-container">
+  <div id="bgm-ctrl" onclick="toggleOuterBgm()">🎵 BGM: ON</div>
+  <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50" oninput="adjustBgmVolume(this.value)">
+</div>
+
+<div class="container">
+  <div id="ai-loading-mask">
+    <div style="font-size: 24px; color: #ffdd67; margin-bottom: 20px; font-weight: bold;">深夜煉金術指標載入中...</div>
+    <div style="font-size: 14px; color: #666;">（正在連結 AI 核心，請稍候）</div>
+  </div>
+
+  <div id="quiz-page">
+    <div class="progress" id="progress-text">LOADING...</div>
+    <div class="question-title" id="question-text">準備進入黑眼圈回收程序...</div>
+    <div id="options-container"></div>
+    <div class="nav-actions">
+      <button id="back-nav-btn" class="back-btn" onclick="handleBackNavigation()">← 返回封面</button>
+    </div>
+  </div>
+
+  <div id="result-page">
+    <div id="tracking-container">
+      <video id="webcam" autoplay playsinline style="display: none;" width="640" height="480"></video>
+      <canvas id="output_canvas" width="640" height="480"></canvas>
+      
+      <div id="countdown-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffdd67; font-size: 100px; font-weight: bold; text-shadow: 0 0 25px rgba(0,0,0,0.9); z-index: 999999; display: none; pointer-events: none;">3</div>
+    </div>
+    <img id="left-eye-img" src="" alt="左眼貼圖" class="eye-grow-img">
+    <img id="right-eye-img" src="" alt="右眼貼圖" class="eye-grow-img">
+    <div style="display: none;">
+      <div id="char-name"></div>
+      <div id="quote-text"></div>
+    </div>
+    <button id="camera-action-btn" class="restart-btn" onclick="goToPhotoPreview()" disabled>黑眼圈IP生成中...</button>
+  </div>
+
+  <div id="preview-page">
+    <div id="tracking-container">
+      <img id="preview-photo-img" src="" alt="拍照預覽">
+    </div>
+    <div class="preview-actions">
+      <button class="restart-btn" onclick="retakePhoto()">重新拍照</button>
+      <button class="restart-btn" onclick="goToPhotoResultPage()">確認</button>
+    </div>
+  </div>
+
+  <div id="photo-result-page">
+    <div class="photo-result-shell">
+      <div class="result-media-column">
+        <h2 id="photo-page-title" style="color: #ffdd67; margin: 0;"></h2>
+        <div class="result-media-card">
+          <img id="photo-result-char-img" src="" alt="角色插圖" class="display-character-img">
+        </div>
+        <div class="result-media-card">
+          <img id="photo-result-photo-img" src="" alt="拍照結果" class="display-photo-result-img">
+        </div>
+      </div>
+      <div class="result-info-column">
+        <p id="photo-quote-text"></p>
+        <div class="qr-section">
+          <div id="qr-code-container">
+            <span style="font-size: 12px; color: #666; text-align: center; padding: 10px; font-style: normal;">點擊下方儲存<br>即刻提煉 QR 碼</span>
+          </div>
+          <p class="qr-copy" id="qr-text-hint">點擊下方「儲存結果」按鈕，系統將自動拍下你眼前的內容並為你提煉出真實的雲端 QR Code 分享圖！</p>
+        </div>
+        <div class="result-actions">
+          <button class="restart-btn" onclick="saveCurrentResult()">儲存結果</button>
+        </div>
+        <div class="result-actions">
+          <button class="restart-btn" onclick="goToCoverPage()">重新回收 / 下一位</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DATABASE_API_URL = "https://script.google.com/macros/s/AKfycbzwdbSwxhGiK2jT7iE5-R6N-74QoN-fnrbtIGesQbDF72T2aoIY31yy0p1kbNDKAkI/exec";
+  let faceMesh;
+  let camera;
+  let videoElement;
+  let canvasElement;
+  let canvasCtx;
+  let currentFinalColor = 'white';
+  let loadedImages = {};     
+  let detectedColor = 'white';
+  let capturedPhotoDataUrl = '';
+
+  let currentEyeWidth = 140; 
+  const maxEyeWidth = 15000; 
+  const growSpeedPerSecond = 180;
+
+  let hasLockedCoordinates = false;
+  let animationFrameId = null;
+  let lastTimestamp = 0;
+  let startTime = 0; 
+  let isShrinking = false;
+  let shrinkStartTimestamp = 0;
+  let hasCompletedSequence = false;
+
+  let eyePositions = { lx: 0, ly: 0, rx: 0, ry: 0 };
+
+  const characterImages = {
+    red:    './images/pattern_red.png',  
+    orange: './images/pattern_orange.png',
+    yellow: './images/pattern_yellow.png',
+    green:  './images/pattern_green.png',
+    blue:   './images/pattern_blue.png',
+    purple: './images/pattern_purple.png',
+    black:  './images/pattern_black.png', 
+    white:  './images/pattern_white.png' 
+  };
+
+  const colorPatternsBase = {
+    red:    './images/pattern_red.png',
+    orange: './images/pattern_orange.png',
+    yellow: './images/pattern_yellow.png',
+    green:  './images/pattern_green.png',
+    blue:   './images/pattern_blue.png',
+    purple: './images/pattern_purple.png',
+    black:  './images/pattern_black.png',
+    white:  './images/pattern_white.png'
+  };
+
+  const colorPatternsLeft = {
+    red:    './images/pattern_red_L.png', orange: './images/pattern_orange_L.png', yellow: './images/pattern_yellow_L.png', green:  './images/pattern_green_L.png',
+    blue:   './images/pattern_blue_L.png', purple: './images/pattern_purple_L.png', black:  './images/pattern_black_L.png', white:  './images/pattern_white_L.png'
+  };
+
+  const colorPatternsRight = {
+    red:    './images/pattern_red_R.png', orange: './images/pattern_orange_R.png', yellow: './images/pattern_yellow_R.png', green:  './images/pattern_green_R.png',
+    blue:   './images/pattern_blue_R.png', purple: './images/pattern_purple_R.png', black:  './images/pattern_black_R.png', white:  './images/pattern_white_R.png'
+  };
+
+  const colorPatternsAltLeft = {
+    red:    './images/pattern_red_L.png', orange: './images/pattern_orange_L.png', yellow: './images/pattern_yellow_L.png', green:  './images/pattern_green_L.png',
+    blue:   './images/pattern_blue_L.png', purple: './images/pattern_purple_L.png', black:  './images/pattern_black_L.png', white:  './images/pattern_white_L.png'
+  };
+
+  const colorPatternsAltRight = {
+    red:    './images/pattern_red_R.png', orange: './images/pattern_orange_R.png', yellow: './images/pattern_yellow_R.png', green:  './images/pattern_green_R.png',
+    blue:   './images/pattern_blue_R.png', purple: './images/pattern_purple_R.png', black:  './images/pattern_black_R.png', white:  './images/pattern_white_R.png'
+  };
+
+  function initAiCore() {
+    videoElement = document.getElementById("webcam");
+    canvasElement = document.getElementById("output_canvas");
+    canvasCtx = canvasElement.getContext("2d");
+
+    Object.keys(colorPatternsLeft).forEach(color => {
+      const img = new Image(); img.src = colorPatternsLeft[color]; loadedImages[`${color}_L`] = img;
+    });
+    Object.keys(colorPatternsRight).forEach(color => {
+      const img = new Image(); img.src = colorPatternsRight[color]; loadedImages[`${color}_R`] = img;
+    });
+    Object.keys(colorPatternsAltLeft).forEach(color => {
+      const img = new Image(); img.src = colorPatternsAltLeft[color]; loadedImages[`${color}_2_L`] = img;
+    });
+    Object.keys(colorPatternsAltRight).forEach(color => {
+      const img = new Image(); img.src = colorPatternsAltRight[color]; loadedImages[`${color}_2_R`] = img;
+    });
+    Object.keys(colorPatternsBase).forEach(color => {
+      const img = new Image(); img.src = colorPatternsBase[color]; loadedImages[color] = img;
+    });
+
+    const FaceMeshClass = window.FaceMesh || FaceMesh;
+    faceMesh = new FaceMeshClass({
+      locateFile: (file) => `https://unpkg.com/@mediapipe/face_mesh@0.4/${file}`
+    });
+
+    faceMesh.setOptions({
+      maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onFaceResults);
+    document.getElementById("ai-loading-mask").style.display = "none";
+    showQuestion();
+  }
+
+  function updateCameraActionButtonState(isReady, label = '拍照') {
+    const cameraActionBtn = document.getElementById('camera-action-btn');
+    if (!cameraActionBtn) return;
+    if (cameraActionBtn.innerText.includes("🚨") || cameraActionBtn.innerText.includes("📸")) return;
+    cameraActionBtn.disabled = !isReady;
+    cameraActionBtn.innerText = label;
+  }
+
+  function startTrackingAR(finalColor) {
+    currentFinalColor = finalColor; currentEyeWidth = 140; hasLockedCoordinates = false; isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = false; capturedPhotoDataUrl = '';
+    updateCameraActionButtonState(false, '黑眼圈IP生成中...');
+    
+    const now = performance.now(); lastTimestamp = now; startTime = now;
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
+
+    const lImg = document.getElementById('left-eye-img');
+    const rImg = document.getElementById('right-eye-img');
+    lImg.src = colorPatternsLeft[finalColor]; rImg.src = colorPatternsRight[finalColor];
+    lImg.style.width = '130px'; rImg.style.width = '130px'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+    lImg.style.display = 'none'; rImg.style.display = 'none';
+
+    document.getElementById("tracking-container").style.display = "block";
+
+    if (!camera) {
+      const CameraClass = window.Camera || Camera;
+      camera = new CameraClass(videoElement, {
+        onFrame: async () => { await faceMesh.send({ image: videoElement }); }, width: 640, height: 480
+      });
+      camera.start().catch(err => { alert("鏡頭啟動失敗：" + err); });
+    }
+    animateImageGrowth(performance.now());
+  }
+
+  function animateImageGrowth(currentTimestamp) {
+    const deltaTime = (currentTimestamp - lastTimestamp) / 1000;
+    lastTimestamp = currentTimestamp;
+    const timeElapsed = currentTimestamp - startTime;
+    const lImg = document.getElementById('left-eye-img');
+    const rImg = document.getElementById('right-eye-img');
+
+    const fadeDuration = 2500; const pauseDuration = 2000; const shrinkDuration = 1200; const initialWaitDuration = 1500;
+
+    if (timeElapsed >= initialWaitDuration && hasLockedCoordinates) {
+      lImg.style.display = 'block'; rImg.style.display = 'block';
+      const fadeElapsed = timeElapsed - initialWaitDuration;
+      const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1);
+
+      if (fadeProgress < 1) {
+        lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 150;
+      } else if (fadeElapsed < fadeDuration + pauseDuration) {
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 150;
+      } else if (hasCompletedSequence) {
+        lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 60;
+        updateCameraActionButtonState(true, '拍照');
+      } else if (isShrinking) {
+        lImg.style.opacity = '1'; rImg.style.opacity = '1';
+        const shrinkProgress = Math.min((currentTimestamp - shrinkStartTimestamp) / shrinkDuration, 1);
+        currentEyeWidth = maxEyeWidth - (maxEyeWidth + 100) * shrinkProgress;
+        if (shrinkProgress >= 1) {
+          currentEyeWidth = 150; isShrinking = false; hasCompletedSequence = true;
+          lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
+          updateCameraActionButtonState(true, '拍照');
+        }
+      } else {
+        lImg.style.opacity = '1'; rImg.style.opacity = '1';
+        const growProgress = Math.min((currentTimestamp - (startTime + initialWaitDuration + fadeDuration + pauseDuration)) / shrinkDuration, 1);
+        currentEyeWidth = 60 + (maxEyeWidth - 60) * growProgress;
+        if (growProgress >= 1) {
+          currentEyeWidth = maxEyeWidth;
+          lImg.src = colorPatternsAltLeft[currentFinalColor]; rImg.src = colorPatternsAltRight[currentFinalColor];
+          isShrinking = true; shrinkStartTimestamp = currentTimestamp;
+          playAppearSound();
+        }
+      }
+    } else {
+      currentEyeWidth = 60; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+    }
+
+    lImg.style.width = currentEyeWidth + 'px'; 
+    rImg.style.width = currentEyeWidth + 'px'; 
+
+    if (hasLockedCoordinates) {
+      const inwardShift = Math.min(currentEyeWidth * -0.08, 500);
+      lImg.style.left = eyePositions.lx + inwardShift - 10 + 'px'; 
+      lImg.style.top = (eyePositions.ly + 10) + 'px'; 
+      
+      rImg.style.left = eyePositions.rx - inwardShift + 10 + 'px'; 
+      rImg.style.top = (eyePositions.ry + 10) + 'px'; 
+    }
+    animationFrameId = requestAnimationFrame(animateImageGrowth);
+  }
+
+  function onFaceResults(results) {
+    canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.translate(canvasElement.width, 0); canvasCtx.scale(-1, 1);
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const landmarks = results.multiFaceLandmarks[0];
+      const rect = canvasElement.getBoundingClientRect();
+      
+      eyePositions.lx = rect.left + (1 - landmarks[111].x) * rect.width;
+      eyePositions.ly = rect.top + landmarks[111].y * rect.height;
+      eyePositions.rx = rect.left + (1 - landmarks[340].x) * rect.width;
+      eyePositions.ry = rect.top + landmarks[340].y * rect.height;
+      hasLockedCoordinates = true;
+    }
+    canvasCtx.restore();
+  }
+
+  let scoreHistory = []; let totalScore = 0; let currentIdx = 0;
+  const questions = [
+    { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫觀感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
+    { q: "2. 在捷運或公車上,你的眼睛 and 手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
+    { q: "3. 如果你的工作/課業壓力是一頂帽子,你覺得現在這頂帽子?", a: ["重到快把我的頸椎壓斷了。", "有點大頂,遮住了我前方的視線,讓我有點迷惘。", "顏色太鮮豔了,周圍的人一直在盯著看,讓我好焦慮。", "還算合身,只是戴久了角點悶。"], scores: [8, 6, 4, 2] },
+    { q: "4. 當你遇到意見不合的豬隊友時,你內心的第一直覺是?", a: ["火火火!好想直接拍桌大吵一架!", "算了,心好累,你說什麼都對(內心開始擺擺)。", "表面微笑說好,私底下瘋狂跟朋友寫小作文抱怨。", "試圖冷靜分析,找出兩全開美的解決辦法。"], scores: [8, 6, 4, 2] },
+    { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
+    { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
+    { q: "7. 深夜躺在床上準備睡決時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
+    { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈.."], scores: [8, 6, 4, 2] },
+    { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寞,是不是自己哪之做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
+  ];
+
+  const question10 = {
+    q: "10. 現在,前面有一面可以宣洩所有疲憊的「黑眼圈回收牆」,你最想把哪一種「心聲」丟進去回收?",
+    a: ["爆表的怒氣與暴躁", "無處安放的社群焦慮", "無法克制的拖延症", "對未來的迷茫與多愁善感", "被迫營業的假面微笑", "身體與心靈的過度勞累", "日復一日的乏味與麻木", "試圖討好所有人的緊繃感"],
+    scores: [8, 6, 4, 2, 8, 6, 4, 2]
+  };
+
+  function showQuestion() {
+    const optionsContainer = document.getElementById('options-container');
+    if (!optionsContainer) return;
+    optionsContainer.innerHTML = '';
+    const navBtn = document.getElementById('back-nav-btn');
+
+    if (currentIdx === 0) { navBtn.innerText = "← 返回封面"; }
+    else { navBtn.innerText = "← 回到上一題"; }
+
+    if (currentIdx < questions.length) {
+      document.getElementById('progress-text').innerText = `PHASE 2: 負能量提煉中 | 問題 ${currentIdx + 1} / 10`;
+      const currentQ = questions[currentIdx];
+      document.getElementById('question-text').innerText = currentQ.q;
+
+      currentQ.a.forEach((option, i) => {
+        const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = option;
+        btn.onclick = () => {
+          playQuizSound();
+          scoreHistory.push(currentQ.scores[i]); totalScore += currentQ.scores[i]; currentIdx++; showQuestion();
+        };
+        optionsContainer.appendChild(btn);
+      });
+    } 
+    else if (currentIdx === questions.length) {
+      document.getElementById('progress-text').innerText = `PHASE 3: 負負得正臨界點 | 最終題`;
+      document.getElementById('question-text').innerText = question10.q;
+
+      question10.a.forEach((option, i) => {
+        const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = option;
+        btn.onclick = () => {
+          playQuizSound();
+          scoreHistory.push(question10.scores[i]); totalScore += question10.scores[i]; currentIdx++; showResult();
+        };
+        optionsContainer.appendChild(btn);
+      });
+    }
+  }
+
+  function handleBackNavigation() {
+    playActionSound();
+    if (currentIdx === 0) {
+      window.location.href = "./cover.html";
+    } else {
+      currentIdx--;
+      const lastAddedScore = scoreHistory.pop();
+      totalScore -= lastAddedScore;
+      showQuestion();
+    }
+  }
+
+  function showResult() {
+    document.getElementById('quiz-page').style.display = 'none';
+    document.getElementById('result-page').style.display = 'block';
+
+    let color = "white"; let charName = ""; let quote = "";
+
+    if (totalScore >= 71) { color = "red"; charName = "氣到快炸鍋．老紅"; quote = "死線壓頂，腦袋已經狂冒白煙！再惹我，老子絕對跟你一起跳開關、同歸於盡！"; }
+    else if (totalScore >= 62) { color = "yellow"; charName = "資訊垃圾桶．阿黃"; quote = "半夜三點還在刷動態，焦慮早就超載。看著別人的精彩生活，真想把自己當垃圾倒掉。"; }
+    else if (totalScore >= 53) { color = "blue"; charName = "萬物皆可拖．小藍"; quote = "今天幕是 Monday Blue，什麼都想拖啊拖，但又擔心事情做不完，好煩啊！"; }
+    else if (totalScore >= 44) { color = "green"; charName = "萬物皆可包．小綠"; quote = "習慣壓抑討好，什麼爛事都往我這裡裝。以為自己萬能，結果日子過得一袋不如一袋。"; }
+    else if (totalScore >= 35) { color = "purple"; charName = "想太多的芋圓．阿紫"; quote = "前途沒大富大貴，紫有一片迷茫。昨晚又為未來熬夜芋卒，像顆不知該滾去哪的爛芋圓。"; }
+    else if (totalScore >= 26) { color = "orange"; charName = "被迫營業中．阿橘"; quote = "累到內餡都要碎了，還是得擠出假笑。人生沒有花好月圓，笑著笑著就流淚了。"; }
+    else if (totalScore >= 20) { color = "black"; charName = "社交糕負摔．老黑"; quote = "生活一片漆黑，身心早已過勞見底。每天熬夜爆肝，只覺得人生真是糟糕。"; }
+    else { color = "white"; charName = "麻木白肉圓．阿白"; quote = "日子單調無趣，生活像肉圓的外皮一樣透明乏味，早就被世界看透，今天繼續當個毫無靈魂的軟爛肉圓。"; }
+    detectedColor = color;
+
+    document.getElementById('char-name').innerText = charName;
+    document.getElementById('quote-text').innerText = quote;
+
+    startTrackingAR(color);
+  }
+
+  function captureCurrentFrame() {
+    if (!canvasElement) return '';
+    try {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvasElement.width; tempCanvas.height = canvasElement.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(canvasElement, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      const lImg = document.getElementById('left-eye-img');
+      const rImg = document.getElementById('right-eye-img');
+      const canvasRect = canvasElement.getBoundingClientRect();
+      const scaleX = canvasElement.width / canvasRect.width;
+      const scaleY = canvasElement.height / canvasRect.height;
+
+      const drawOverlay = (imgElement) => {
+        if (!imgElement || !imgElement.src || imgElement.style.display === 'none' || imgElement.style.opacity === '0') return;
+        const imgRect = imgElement.getBoundingClientRect();
+        const drawWidth = imgRect.width * scaleX;
+        const drawHeight = imgRect.height * scaleY;
+        const canvasX = (imgRect.left - canvasRect.left) * scaleX;
+        const canvasY = (imgRect.top - canvasRect.top) * scaleY;
+        tempCtx.drawImage(imgElement, canvasX, canvasY, drawWidth, drawHeight);
+      };
+
+      drawOverlay(lImg);
+      drawOverlay(rImg);
+      return tempCanvas.toDataURL('image/png');
+    } catch (error) { console.error('拍照失敗：', error); return ''; }
+  }
+
+  function showPreviewPage() {
+    document.getElementById('result-page').style.display = 'none';
+    document.getElementById('preview-page').style.display = 'block';
+    document.getElementById('photo-result-page').style.display = 'none';
+    const previewImg = document.getElementById('preview-photo-img');
+    if (previewImg) { previewImg.src = capturedPhotoDataUrl; }
+  }
+
+  function getActiveBgmPlayer() {
+    if (window.parent && window.parent.document) {
+      const outerBgm = window.parent.document.getElementById('cover-bgm');
+      if (outerBgm) return outerBgm;
+    }
+    return document.getElementById('bgm-player') || document.getElementById('cover-bgm');
+  }
+
+  function adjustBgmVolume(value) {
+    const activeBgm = getActiveBgmPlayer();
+    if (activeBgm) {
+      activeBgm.volume = parseFloat(value) / 100;
+      
+      const localBtn = document.getElementById('bgm-ctrl');
+      if (localBtn) {
+        if (value == 0) {
+          localBtn.innerText = "🎵 BGM: OFF";
+        } else {
+          localBtn.innerText = "🎵 BGM: ON";
+        }
+      }
+      localStorage.setItem('user_bgm_volume', value);
+    }
+  }
+
+  function applySharedState(state) {
+    if (!state) return;
+    detectedColor = state.color || detectedColor; currentFinalColor = state.color || currentFinalColor;
+    document.getElementById('char-name').innerText = state.charName || '未知角色';
+    document.getElementById('quote-text').innerText = state.quote || '';
+    capturedPhotoDataUrl = state.photoDataUrl || '';
+    goToPhotoResultPage();
+  }
+
+  function goToPhotoResultPage() {
+    playActionSound();
+    document.getElementById('result-page').style.display = 'none';
+    document.getElementById('preview-page').style.display = 'none';
+    document.getElementById('photo-result-page').style.display = 'block';
+
+    const charImgElement = document.getElementById('photo-result-char-img');
+    const photoImgElement = document.getElementById('photo-result-photo-img');
+    const resultImage = characterImages[currentFinalColor] || characterImages[detectedColor];
+
+    if (charImgElement) { charImgElement.src = resultImage; charImgElement.alt = '角色插圖'; }
+    if (photoImgElement) {
+      photoImgElement.src = capturedPhotoDataUrl || ''; photoImgElement.alt = '拍照結果';
+      photoImgElement.style.display = capturedPhotoDataUrl ? 'block' : 'none';
+    }
+
+    document.getElementById('photo-page-title').innerText = `${document.getElementById('char-name').innerText}`;
+    document.getElementById('photo-quote-text').innerText = document.getElementById('quote-text').innerText;
+  }
+
+  function saveCurrentResult() {
+    playActionSound();
+    if (document.getElementById('photo-result-page').style.display !== 'block') {
+      return; 
+    }
+
+    const container = document.getElementById('qr-code-container');
+    const hintText = document.getElementById('qr-text-hint');
+    if (!container) return;
+
+    const uniqueId = "id_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
+    const baseUrl = window.location.origin + window.location.pathname;
+    
+    let charName = '大同電鍋英雄';
+    let quote = '';
+    try {
+      charName = document.getElementById('photo-page-title')?.innerText || document.getElementById('char-name')?.innerText || '大同電鍋英雄';
+      quote = document.getElementById('photo-quote-text')?.innerText || document.getElementById('quote-text')?.innerText || '';
+    } catch(e) {}
+
+    try {
+      const shareUrl = `${baseUrl}?uid=${uniqueId}`;
+      container.innerHTML = '';
+      new QRCode(container, {
+        text: shareUrl,
+        width: 156,
+        height: 156,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      if (hintText) {
+        hintText.innerText = "提煉成功！專屬 QR 碼已同步包含在下載的圖片中囉！";
+        hintText.style.color = "#ffdd67";
+      }
+
+      setTimeout(() => {
+        if (window.html2canvas) {
+          const target = document.getElementById('photo-result-page');
+          
+          html2canvas(target, { 
+            backgroundColor: '#141414', 
+            scale: 2, 
+            useCORS: true, 
+            logging: false 
+          })
+          .then(canvas => {
+            const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+            fetch(DATABASE_API_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({
+                id: uniqueId,
+                charName: charName,
+                quote: quote,
+                color: currentFinalColor,
+                photoDataUrl: finalDataUrl 
+              })
+            })
+            .then(res => res.json())
+            .then(resData => console.log("雲端整頁報告同步備份成功！", resData))
+            .catch(err => console.error("雲端備份稍有波折", err));
+
+            const link = document.createElement('a');
+            link.href = finalDataUrl;
+            link.download = `${charName}_成果回收報告.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+          });
+        }
+      }, 100);
+
+    } catch (error) {
+      console.error('儲存程序出錯：', error);
+    }
+  }
+
+  function goToPhotoPreview() {
+    playActionSound();
+    const cameraActionBtn = document.getElementById('camera-action-btn'); 
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (cameraActionBtn && cameraActionBtn.disabled) return;
+
+    if (cameraActionBtn) {
+      cameraActionBtn.disabled = true;
+      cameraActionBtn.innerText = "📸 準備拍照，請看鏡頭！";
+    }
+
+    let countdown = 3; 
+    if (countdownOverlay) {
+      countdownOverlay.innerText = countdown;
+      countdownOverlay.style.display = 'block'; 
+    }
+
+    const timer = setInterval(() => {
+      countdown--;
+      
+      if (countdown > 0) {
+        if (countdownOverlay) {
+          countdownOverlay.innerText = countdown; 
+        }
+      } else {
+        clearInterval(timer);
+        if (countdownOverlay) {
+          countdownOverlay.style.display = 'none'; 
+        }
+
+        capturedPhotoDataUrl = captureCurrentFrame();
+        if (camera) { try { camera.stop(); } catch (e) { console.log(e); } }
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        
+        showPreviewPage();
+
+        if (cameraActionBtn) {
+          cameraActionBtn.disabled = false;
+          cameraActionBtn.innerText = '拍照';
+        }
+      }
+    }, 1000);
+  }
+
+  function restoreReadyToCaptureState() {
+    const lImg = document.getElementById('left-eye-img'); const rImg = document.getElementById('right-eye-img');
+    if (lImg && rImg) {
+      lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
+      lImg.style.display = 'block'; rImg.style.display = 'block'; lImg.style.opacity = '1'; rImg.style.opacity = '1';
+      currentEyeWidth = 150; lImg.style.width = '150px'; rImg.style.width = '150px'; 
+    }
+    isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
+    startTime = performance.now() - 7000; lastTimestamp = performance.now();
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+    animationFrameId = requestAnimationFrame(animateImageGrowth);
+  }
+
+  function retakePhoto() {
+    playActionSound();
+    document.getElementById('preview-page').style.display = 'none';
+    document.getElementById('result-page').style.display = 'block';
+    document.getElementById('photo-result-page').style.display = 'none';
+    capturedPhotoDataUrl = ''; updateCameraActionButtonState(true, '拍照');
+
+    if (!camera) {
+      const CameraClass = window.Camera || Camera;
+      camera = new CameraClass(videoElement, {
+        onFrame: async () => { await faceMesh.send({ image: videoElement }); }, width: 640, height: 480
+      });
+    }
+    try { camera.start(); } catch (error) { console.error('重新啟動鏡頭失敗：', error); }
+    restoreReadyToCaptureState();
+  }
+
+  function goToCoverPage() {
+    playActionSound();
+    window.parent.postMessage("CLOSE_QUIZ_AND_GO_HOME", "*");
+  }
+
+  function toggleOuterBgm() {
+    playActionSound();
+    const localBtn = document.getElementById('bgm-ctrl');
+    const volumeSlider = document.getElementById('volume-slider');
+    if (!localBtn) return;
+    if (window.parent) {
+      const outerBgm = window.parent.document.getElementById('cover-bgm');
+      if (outerBgm) {
+        if (outerBgm.paused) {
+          outerBgm.play();
+          localBtn.innerText = "🎵 BGM: ON";
+          if (volumeSlider) outerBgm.volume = parseFloat(volumeSlider.value) / 100;
+        } else {
+          outerBgm.pause();
+          localBtn.innerText = "🎵 BGM: OFF";
+        }
+      }
+    }
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    initAiCore();
+
+    setTimeout(() => {
+      const activeBgm = getActiveBgmPlayer();
+      const volumeSlider = document.getElementById('volume-slider');
+      const savedVolume = localStorage.getItem('user_bgm_volume');
+      
+      if (activeBgm && volumeSlider) {
+        if (savedVolume !== null) {
+          activeBgm.volume = parseFloat(savedVolume) / 100;
+          volumeSlider.value = savedVolume;
+          const localBtn = document.getElementById('bgm-ctrl');
+          if (localBtn && savedVolume == 0) {
+            localBtn.innerText = "🎵 BGM: OFF";
+          }
+        } else {
+          activeBgm.volume = 0.5;
+          volumeSlider.value = 50;
+        }
+      }
+    }, 300);
+  });
+
+  function playQuizSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('quiz-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log(e));
+      }
+    }
+  }
+
+  // 功能按鈕音效觸發防線
+  function playActionSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('action-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log(e));
+      }
+    }
+  }
+  
+  function playAppearSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('appear-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log("登場音效解鎖:", e));
+      }
+    }
+  }
+</script>
+</body>
+</html>
