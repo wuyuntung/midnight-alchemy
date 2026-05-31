@@ -811,8 +811,14 @@
     const hintText = document.getElementById('qr-text-hint');
     if (!container) return;
 
+    // 1. 顯示提煉中的提示
+    if (hintText) {
+      hintText.innerText = "⚡ 深夜煉金術正在拍照並同步雲端，請稍候...";
+      hintText.style.color = "#ffdd67";
+    }
+    container.innerHTML = '<span style="font-size: 12px; color: #666; text-align: center; padding: 10px;">圖片提煉中...</span>';
+
     const uniqueId = "id_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
-    const baseUrl = window.location.origin + window.location.pathname;
     
     let charName = '大同電鍋英雄';
     let quote = '';
@@ -821,64 +827,70 @@
       quote = document.getElementById('photo-quote-text')?.innerText || document.getElementById('quote-text')?.innerText || '';
     } catch(e) {}
 
-    try {
-      const shareUrl = `${baseUrl}?uid=${uniqueId}`;
-      container.innerHTML = '';
-      new QRCode(container, {
-        text: shareUrl,
-        width: 156,
-        height: 156,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
+    // 2. 先拍照快照整頁結果
+    setTimeout(() => {
+      if (window.html2canvas) {
+        const target = document.getElementById('photo-result-page');
+        
+        html2canvas(target, { 
+          backgroundColor: '#141414', 
+          scale: 2, 
+          useCORS: true, 
+          logging: false 
+        })
+        .then(canvas => {
+          const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
-      if (hintText) {
-        hintText.innerText = "提煉成功！專屬 QR 碼已同步包含在下載的圖片中囉！";
-        hintText.style.color = "#ffdd67";
-      }
-
-      setTimeout(() => {
-        if (window.html2canvas) {
-          const target = document.getElementById('photo-result-page');
-          
-          html2canvas(target, { 
-            backgroundColor: '#141414', 
-            scale: 2, 
-            useCORS: true, 
-            logging: false 
-          })
-          .then(canvas => {
-            const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-
-            fetch(DATABASE_API_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain;charset=utf-8" },
-              body: JSON.stringify({
-                id: uniqueId,
-                charName: charName,
-                quote: quote,
-                color: currentFinalColor,
-                photoDataUrl: finalDataUrl 
-              })
+          // 3. 關鍵改進：立刻發送 POST 把結果圖焊進 Google 雲端資料庫
+          fetch(DATABASE_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              id: uniqueId,
+              charName: charName,
+              quote: quote,
+              color: currentFinalColor,
+              photoDataUrl: finalDataUrl 
             })
-            .then(res => res.json())
-            .then(resData => console.log("雲端整頁報告同步備份成功！", resData))
-            .catch(err => console.error("雲端備份稍有波折", err));
+          })
+          .then(res => res.json())
+          .then(resData => {
+            console.log("雲端整頁報告同步備份成功！", resData);
+            
+            // 4. 🌟 終極救星：當雲端確認存檔成功後，直接將 QR Code 鎖定在「妳的 GAS 報告讀取網址」！
+            // 這樣手機一掃描，GAS 就會直接在手機畫面上秀出這張 100% 實體結果大圖片！
+            const targetQrUrl = `${DATABASE_API_URL}?uid=${uniqueId}`;
+            
+            container.innerHTML = ''; // 清空加載字樣
+            new QRCode(container, {
+              text: targetQrUrl, // 👈 這裡直接餵給它真正的雲端照片路徑！
+              width: 156,
+              height: 156,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
 
-            const link = document.createElement('a');
-            link.href = finalDataUrl;
-            link.download = `${charName}_成果回收報告.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            if (hintText) {
+              hintText.innerText = "🎉 提煉成功！手機掃描上方 QR Code 即可直接帶走妳的結果圖報告！";
+              hintText.style.color = "#ffdd67";
+            }
+          })
+          .catch(err => {
+            console.error("雲端備份稍有波折", err);
+            if (hintText) hintText.innerText = "雲端連結稍有波折，請再點擊一次儲存！";
           });
-        }
-      }, 100);
 
-    } catch (error) {
-      console.error('儲存程序出錯：', error);
-    }
+          // 5. 電腦端依舊觸發自動下載 JPG 備份
+          const link = document.createElement('a');
+          link.href = finalDataUrl;
+          link.download = `${charName}_成果回收報告.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        });
+      }
+    }, 100);
   }
 
   function goToPhotoPreview() {
