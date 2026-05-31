@@ -664,12 +664,12 @@
         const scaledWidth = parseFloat(imgElement.style.width || '0');
         if (!scaledWidth) return;
         const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
-        const isRightEye = (imgElement === rImg);
-        const drawWidth = isRightEye ? (scaledWidth * 1.25) : scaledWidth; 
+        const drawWidth = scaledWidth;
         const drawHeight = drawWidth * aspect;
-        
-        const sourceX = (imgElement === lImg ? eyePositions.lx : eyePositions.rx) - rect.left;
-        const sourceY = (imgElement === lImg ? eyePositions.ly : eyePositions.ry) - rect.top;
+        const isRightEye = imgElement === rImg;
+        const inwardShift = Math.min(currentEyeWidth * -0.15, 60);
+        const sourceX = (isRightEye ? eyePositions.rx - inwardShift : eyePositions.lx + inwardShift) - rect.left;
+        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) + 10 - rect.top;
         const canvasX = sourceX * (canvasElement.width / rect.width);
         const canvasY = sourceY * (canvasElement.height / rect.height);
         tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
