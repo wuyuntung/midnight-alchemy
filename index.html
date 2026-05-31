@@ -528,11 +528,13 @@
     // 🌟 左右眼大小一致
     lImg.style.width = currentEyeWidth + 'px'; 
     rImg.style.width = currentEyeWidth + 'px'; 
+    lImg.style.height = 'auto';
+    rImg.style.height = 'auto';
 
     if (hasLockedCoordinates) {
       // 🌟 防 iframe 偏位微調，並讓貼圖落在眼睛下方
       const inwardShift = Math.min(currentEyeWidth * -0.15, 60); 
-      const downwardShift = currentEyeWidth * 0.5;
+      const downwardShift = currentEyeWidth * 0.6;
       lImg.style.left = eyePositions.lx + inwardShift + 'px'; 
       lImg.style.top = (eyePositions.ly + downwardShift) + 'px'; 
       
@@ -551,11 +553,11 @@
       const landmarks = results.multiFaceLandmarks[0];
       const rect = canvasElement.getBoundingClientRect();
       
-      // 🌟 物理對齊防漂移修正
-      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[111].x) * rect.width;
-      eyePositions.ly = window.scrollY + rect.top + landmarks[111].y * rect.height;
-      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[340].x) * rect.width;
-      eyePositions.ry = window.scrollY + rect.top + landmarks[340].y * rect.height;
+      // 🌟 使用下眼線點，讓貼圖更穩定地顯示在眼睛下方
+      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[159].x) * rect.width;
+      eyePositions.ly = window.scrollY + rect.top + landmarks[159].y * rect.height;
+      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[386].x) * rect.width;
+      eyePositions.ry = window.scrollY + rect.top + landmarks[386].y * rect.height;
       hasLockedCoordinates = true;
     }
     canvasCtx.restore();
@@ -641,7 +643,7 @@
     else if (totalScore >= 53) { color = "blue"; charName = "萬物皆可拖．小藍"; quote = "今天又是 Monday Blue，什麼都想拖啊拖，但又擔心事情做不完，好煩啊！"; }
     else if (totalScore >= 44) { color = "green"; charName = "萬物皆可包．小綠"; quote = "習慣壓抑討好，什麼爛事都往我這裡裝。以為自己萬能，結果日子過得一袋不如一袋。"; }
     else if (totalScore >= 35) { color = "purple"; charName = "想太多的芋圓．阿紫"; quote = "前途沒大富大貴，紫有一片迷茫。昨晚又為未來熬夜芋卒，像顆不知該滾去哪的爛芋圓。"; }
-    else if (totalScore >= 26) { color = "orange"; charName = "被迫營業中．阿餅"; quote = "累到內餡都要碎了，還是得擠出假笑。人生沒有花好月圓，笑著笑著就流淚了。"; }
+    else if (totalScore >= 26) { color = "orange"; charName = "被迫營業中．阿橘"; quote = "累到內餡都要碎了，還是得擠出假笑。人生沒有花好月圓，笑著笑著就流淚了。"; }
     else if (totalScore >= 20) { color = "black"; charName = "社交糕負摔．老黑"; quote = "生活一片漆黑，身心早已過勞見底。每天熬夜爆肝，只覺得人生真是糟糕。"; }
     else { color = "white"; charName = "麻木白肉圓．阿白"; quote = "日子單調無趣，生活像肉圓的外皮一樣透明乏味，早就被世界看透，今天繼續當個毫無靈魂的軟爛肉圓。"; }
     detectedColor = color;
@@ -672,8 +674,9 @@
         const drawWidth = scaledWidth;
         const drawHeight = drawWidth * aspect;
         const isRightEye = imgElement === rImg;
-        const downwardShift = currentEyeWidth * 0.5;
-        const sourceX = (isRightEye ? eyePositions.rx : eyePositions.lx) - rect.left;
+        const inwardShift = Math.min(currentEyeWidth * -0.15, 60);
+        const downwardShift = drawHeight * 0.6;
+        const sourceX = (isRightEye ? eyePositions.rx - inwardShift : eyePositions.lx + inwardShift) - rect.left;
         const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) + downwardShift - rect.top;
         const canvasX = sourceX * (canvasElement.width / rect.width);
         const canvasY = sourceY * (canvasElement.height / rect.height);
