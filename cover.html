@@ -51,7 +51,6 @@
       height: 180%;
       top: -40%;
       left: -40%;
-      /* 🌟 核心修正：全部換成 rgba(255, 255, 255) 純白色通道，並拉高濃度 */
       background: 
         radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.12) 0%, transparent 55%),
         radial-gradient(circle at 75% 65%, rgba(255, 255, 255, 0.09) 0%, transparent 60%),
@@ -60,25 +59,9 @@
       pointer-events: none;
     }
 
-    /* 第一層迷霧 */
-    .smoke-1 {
-      opacity: 0.9;
-      animation: smokeDrift 40s ease-in-out infinite;
-    }
-
-    /* 第二層迷霧 */
-    .smoke-2 {
-      transform: scale(1.3) rotate(45deg);
-      opacity: 0.8;
-      animation: smokeDrift 28s ease-in-out infinite reverse;
-    }
-
-    /* 第三層迷霧 */
-    .smoke-3 {
-      transform: scale(1.1) rotate(-20deg);
-      opacity: 0.7;
-      animation: smokeDrift 20s ease-in-out infinite;
-    }
+    .smoke-1 { opacity: 0.9; animation: smokeDrift 40s ease-in-out infinite; }
+    .smoke-2 { transform: scale(1.3) rotate(45deg); opacity: 0.8; animation: smokeDrift 28s ease-in-out infinite reverse; }
+    .smoke-3 { transform: scale(1.1) rotate(-20deg); opacity: 0.7; animation: smokeDrift 20s ease-in-out infinite; }
 
     @keyframes smokeDrift {
       0% { transform: translate(0, 0) scale(1) rotate(0deg); }
@@ -86,6 +69,7 @@
       66% { transform: translate(-6%, 5%) scale(0.92) rotate(-6deg); }
       100% { transform: translate(0, 0) scale(1) rotate(0deg); }
     }
+
     .cover-container {
       text-align: center;
       max-width: 600px;
@@ -164,6 +148,25 @@
       font-style: italic;
       z-index: 2;
     }
+
+    /* 🌟 潼，新增：滿版隱形問答大外殼，平常隱藏（display: none;），按開始才完美噴出來蓋住全場 */
+    #quiz-frame-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 999999;
+      display: none;
+      border: none;
+      background-color: #0b0b0b;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -177,8 +180,10 @@
     <audio id="cover-bgm" loop autoplay>
       <source src="./BGM.mp4" type="audio/mp3">
     </audio>
+    <audio id="quiz-sound" preload="auto" src="./按鍵2.m4a"></audio>
+<audio id="action-sound" preload="auto" src="./按鍵1.m4a"></audio>
 
-    <div class="cover-container">
+    <div class="cover-container" id="main-cover-content">
         <div class="logo-area">
             <img class="cover-art" src="./images/pattern_original.png" alt="pattern_original">
         </div>
@@ -189,23 +194,42 @@
         <button class="start-btn" onclick="navigateToQuiz()">進入回收程序</button>
     </div>
 
-    <div class="footer-tag">「進來前滿臉疲容，出去後負負得正」</div>
+    <div class="footer-tag" id="main-footer-tag">「進來前滿臉疲容，出去後負負得正」</div>
+
+    <iframe id="quiz-frame-container" src=""></iframe>
 
     <script>
         function navigateToQuiz() {
-            const bgmPlayer = document.getElementById('cover-bgm');
+          playActionSound();
+            const frame = document.getElementById('quiz-frame-container');
+            if (!frame) return;
+
+            // 🚀 黑魔法一：現場把妳絕對不改名的主戰場 index.html 載入進來！
+            frame.src = "./index.html";
             
-            // 🌟 在跳轉的微秒瞬間，偷偷記下當前的秒數
-            if (bgmPlayer) {
-                localStorage.setItem('bgm_current_time', bgmPlayer.currentTime);
-            }
-
-            // 通知 index.html 開啟自動播放
-            localStorage.setItem('midnight-alchemy-music-auto-start', 'true');
-
-            // 執行跳轉
-            window.location.href = "./index.html";
+            // 🚀 黑魔法二：一秒鐘亮出大外殼，把整個首頁畫面完美蓋上去！
+            frame.style.display = "block";
         }
+
+        // 🌟 核心密語通訊：隨時監聽裡面的 index.html 有沒有要高喊「回首頁」？
+        window.addEventListener("message", (event) => {
+            if (event.data === "CLOSE_QUIZ_AND_GO_HOME") {
+                const frame = document.getElementById('quiz-frame-container');
+                if (frame) {
+                    frame.style.display = "none"; // 默默把問答頁收起來
+                    frame.src = "";               // 徹底洗掉問答頁的快取，讓下一個人來是全新乾淨的
+                }
+            }
+        });
+        function playActionSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('action-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log(e));
+      }
+    }
+  }
     </script>
 </body>
 </html>

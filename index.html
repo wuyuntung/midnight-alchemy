@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
   
   <style>
-    /* 🌟 煙霧底層防線：鎖死純黑，防止外圍泛白 */
+    /* 🌟 煙霧底層防線：鎖死純黑 */
     html {
       background-color: #0b0b0b;
     }
@@ -28,17 +28,14 @@
       color: #ffffff;
       display: flex;
       justify-content: center;
-      align-items: flex-start; /* 靠頂部對齊，防止溢出 */
+      align-items: flex-start; 
       padding: 40px 0;        
       box-sizing: border-box;
       overflow-y: auto;        
       overflow-x: hidden;
-      background-color: transparent; /* 保持透明讓煙霧透上來 */
+      background-color: transparent; 
     }
     
-    /* ==========================================
-       💨 測驗頁：純白濃郁迷霧特效 (徹底洗去黃色調)
-       ========================================== */
     .smoke-bg-container {
       position: fixed;
       top: 0;
@@ -46,7 +43,7 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      z-index: 0; /* 待在灰色卡片後方 */
+      z-index: 0; 
       pointer-events: none; 
       background-color: #050505; 
     }
@@ -88,7 +85,7 @@
       position: relative;
       box-sizing: border-box;
       margin: 0 auto;          
-      z-index: 2; /* 確保在煙霧前方 */
+      z-index: 2; 
     }
     
     h2 { margin-top: 0; margin-bottom: 25px; color: #ffdd67; font-size: 26px; }
@@ -137,7 +134,14 @@
       background-color: rgba(255, 221, 103, 0.05);
     }
 
+    /* 🌟 固定跨網頁遙控按鈕樣式 */
+    #bgm-ctrl {
+      position: fixed; top: 20px; right: 20px; z-index: 99999999 !important; background: rgba(28,28,28,0.85); border: 1px solid #ffdd67; color: #ffdd67; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; letter-spacing: 1px; transition: all 0.2s; pointer-events: auto !important;
+    }
+    #bgm-ctrl:hover { background: #ffdd67; color: #0b0b0b; }
+
     .restart-btn {
+      display: inline-block;
       background-color: transparent;
       color: #ffdd67;
       border: 2px solid #ffdd67;
@@ -170,6 +174,7 @@
 
     #result-page { display: none; }
     
+    /* 🌟 鎖死對齊防線：讓鏡頭容器完美置中填滿 */
     #result-page #tracking-container {
       width: 720px !important;   
       height: 540px !important;  
@@ -178,10 +183,14 @@
       background: #000;
       border-radius: 16px;
       overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     #result-page #output_canvas {
-      width: 720px !important;
-      height: 540px !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover; 
       border-radius: 16px;
       border: none !important;
       display: block;
@@ -240,10 +249,6 @@
     }
     .qr-copy { color: #888; font-size: 13px; line-height: 1.6; max-width: 90%; margin: 0; text-align: left; }
 
-    #bgm-ctrl {
-      position: fixed; top: 20px; right: 20px; z-index: 99999; background: rgba(28,28,28,0.85); border: 1px solid #ffdd67; color: #ffdd67; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; letter-spacing: 1px; transition: all 0.2s;
-    }
-
     #ai-loading-mask {
       position: absolute; top:0; left:0; width:100%; height:100%; background: #141414; z-index: 1000; display: flex; justify-content: center; align-items: center; border-radius: 24px; flex-direction: column;
     }
@@ -266,11 +271,7 @@
   <div class="smoke-layer smoke-3"></div>
 </div>
 
-<div id="bgm-ctrl" onclick="toggleBgm()">🎵 BGM: ON</div>
-
-<audio id="bgm-player" loop autoplay>
-  <source src="./BGM.mp4" type="audio/mp3">
-</audio>
+<div id="bgm-ctrl" onclick="toggleOuterBgm()">🎵 BGM: ON</div>
 
 <div class="container">
   <div id="ai-loading-mask">
@@ -291,6 +292,8 @@
     <div id="tracking-container">
       <video id="webcam" autoplay playsinline style="display: none;" width="640" height="480"></video>
       <canvas id="output_canvas" width="640" height="480"></canvas>
+      
+      <div id="countdown-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffdd67; font-size: 100px; font-weight: bold; text-shadow: 0 0 25px rgba(0,0,0,0.9); z-index: 999999; display: none; pointer-events: none;">3</div>
     </div>
     <img id="left-eye-img" src="" alt="左眼貼圖" class="eye-grow-img">
     <img id="right-eye-img" src="" alt="右眼貼圖" class="eye-grow-img">
@@ -409,28 +412,6 @@
     blue:   './images/pattern_blue_R.png', purple: './images/pattern_purple_R.png', black:  './images/pattern_black_R.png', white:  './images/pattern_white_R.png'
   };
 
-  let bgm = document.getElementById('bgm-player');
-  let bgmCtrl = document.getElementById('bgm-ctrl');
-  let isMusicPlaying = false;
-
-  function toggleBgm() {
-    if (!bgm) return;
-    if (!isMusicPlaying) {
-      bgm.play().then(() => {
-        isMusicPlaying = true;
-        bgmCtrl.innerText = "🎵 BGM: ON";
-      });
-    } else {
-      bgm.pause();
-      isMusicPlaying = false;
-      bgmCtrl.innerText = "🎵 BGM: OFF";
-    }
-  }
-
-  function setBgmSpeed(speed) {
-    if (bgm) bgm.playbackRate = speed;
-  }
-
   function initAiCore() {
     videoElement = document.getElementById("webcam");
     canvasElement = document.getElementById("output_canvas");
@@ -469,6 +450,7 @@
   function updateCameraActionButtonState(isReady, label = '拍照') {
     const cameraActionBtn = document.getElementById('camera-action-btn');
     if (!cameraActionBtn) return;
+    if (cameraActionBtn.innerText.includes("🚨") || cameraActionBtn.innerText.includes("📸")) return;
     cameraActionBtn.disabled = !isReady;
     cameraActionBtn.innerText = label;
   }
@@ -513,7 +495,7 @@
       const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1);
 
       if (fadeProgress < 1) {
-        lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 70;
+        lImg.style.opacity = String(fadeProgress); rImg.style.opacity = String(fadeProgress); currentEyeWidth = 130;
       } else if (fadeElapsed < fadeDuration + pauseDuration) {
         lImg.style.opacity = '1'; rImg.style.opacity = '1'; currentEyeWidth = 130;
       } else if (hasCompletedSequence) {
@@ -522,7 +504,7 @@
       } else if (isShrinking) {
         lImg.style.opacity = '1'; rImg.style.opacity = '1';
         const shrinkProgress = Math.min((currentTimestamp - shrinkStartTimestamp) / shrinkDuration, 1);
-        currentEyeWidth = maxEyeWidth - (maxEyeWidth - 70) * shrinkProgress;
+        currentEyeWidth = maxEyeWidth - (maxEyeWidth - 130) * shrinkProgress;
         if (shrinkProgress >= 1) {
           currentEyeWidth = 130; isShrinking = false; hasCompletedSequence = true;
           lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
@@ -539,14 +521,21 @@
         }
       }
     } else {
-      currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+      currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.none = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     }
 
-    lImg.style.width = currentEyeWidth + 'px'; rImg.style.width = currentEyeWidth + 'px';
+    // 🌟 一對一對齊比例，右眼貼圖增幅放大 1.25 倍
+    lImg.style.width = currentEyeWidth + 'px'; 
+    rImg.style.width = (currentEyeWidth * 1.25) + 'px'; 
+
     if (hasLockedCoordinates) {
-      const inwardShift = Math.min(currentEyeWidth * -0.3, 100);
-      lImg.style.left = eyePositions.lx + inwardShift + 'px'; lImg.style.top = eyePositions.ly + 'px';
-      rImg.style.left = eyePositions.rx - inwardShift + 'px'; rImg.style.top = eyePositions.ry + 'px';
+      // 🌟 防 iframe 偏位微調
+      const inwardShift = Math.min(currentEyeWidth * -0.15, 60); 
+      lImg.style.left = eyePositions.lx + inwardShift + 'px'; 
+      lImg.style.top = (eyePositions.ly + 10) + 'px'; 
+      
+      rImg.style.left = eyePositions.rx - inwardShift + 'px'; 
+      rImg.style.top = (eyePositions.ry + 10) + 'px'; 
     }
     animationFrameId = requestAnimationFrame(animateImageGrowth);
   }
@@ -559,10 +548,12 @@
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
       const landmarks = results.multiFaceLandmarks[0];
       const rect = canvasElement.getBoundingClientRect();
-      eyePositions.lx = rect.left + (1 - landmarks[111].x) * rect.width;
-      eyePositions.ly = rect.top + landmarks[111].y * rect.height;
-      eyePositions.rx = rect.left + (1 - landmarks[340].x) * rect.width;
-      eyePositions.ry = rect.top + landmarks[340].y * rect.height;
+      
+      // 🌟 物理對齊防漂移修正
+      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[111].x) * rect.width;
+      eyePositions.ly = window.scrollY + rect.top + landmarks[111].y * rect.height;
+      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[340].x) * rect.width;
+      eyePositions.ry = window.scrollY + rect.top + landmarks[340].y * rect.height;
       hasLockedCoordinates = true;
     }
     canvasCtx.restore();
@@ -571,12 +562,12 @@
   let scoreHistory = []; let totalScore = 0; let currentIdx = 0;
   const questions = [
     { q: "1. 鬧鐘響起的那一刻,你通常第一個冒出的念頭是?", a: ["完蛋,今天有一堆事要做...", "再讓我逃避世界5分鐘...", "毫觀感覺,像機器人一樣起床。", "又是新的一天,雖然累但出發吧!"], scores: [8, 6, 4, 2] },
-    { q: "2. 在捷運或公車上,你的眼睛和手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
+    { q: "2. 在捷運或公車上,你的眼睛 and 手通常在做什麼?", a: ["瘋狂刷社群、回訊息,深怕漏掉任何資訊。", "盯著窗外放空,進入自己的小宇宙。", "閉目養神,但腦袋其實還在轉。", "觀察身邊的乘客,或看書、聽音樂。"], scores: [8, 6, 4, 2] },
     { q: "3. 如果你的工作/課業壓力是一頂帽子,你覺得現在這頂帽子?", a: ["重到快把我的頸椎壓斷了。", "有點大頂,遮住了我前方的視線,讓我有點迷惘。", "顏色太鮮豔了,周圍的人一直在盯著看,讓我好焦慮。", "還算合身,只是戴久了角點悶。"], scores: [8, 6, 4, 2] },
-    { q: "4. 當你遇到意見不合的豬隊友時,你內心的第一直覺是?", a: ["火火火!好想直接拍桌大吵一架!", "算了,心好累,你說什麼都對(內心開始擺擺)。", "表面微笑說好,私底下瘋狂跟朋友寫小作文抱怨。", "試圖冷靜分析,找出兩全其美的解決辦法。"], scores: [8, 6, 4, 2] },
+    { q: "4. 當你遇到意見不合的豬隊友時,你內心的第一直覺是?", a: ["火火火!好想直接拍桌大吵一架!", "算了,心好累,你說什麼都對(內心開始擺擺)。", "表面微笑說好,私底下瘋狂跟朋友寫小作文抱怨。", "試圖冷靜分析,找出兩全開美的解決辦法。"], scores: [8, 6, 4, 2] },
     { q: "5. 連續熬夜幾天後,你照鏡子看著自己的黑眼圈,你覺得它像什麼?", a: ["像被揍了一拳,充滿戰鬥過的痕跡。", "像暈開的煙燻妝,有一種頹廢的美感。", "像發霉的年糕,看著就讓人焦慮。", "像一塊擦不掉的污漬,乾脆假裝沒看到。"], scores: [8, 6, 4, 2] },
     { q: "6. 午餐時間到了,面對琳瑯滿目的選擇,你通常怎麼決定?", a: ["選擇障礙大爆發,看評論看很久還是決定不了。", "點最刺激的!麻辣鍋、炸雞,垃圾食物才能續命!", "跟著別人點,或者吃跟昨天一模一樣的,懶得思考。", "挑相對健康的健康便當,試圖挽救一下身體。"], scores: [8, 6, 4, 2] },
-    { q: "7. 深夜躺在床上準備睡覺時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
+    { q: "7. 深夜躺在床上準備睡決時,你的大腦通常在播放什麼?", a: ["開始回顧今天講錯的話,或是五年前的尷尬往事。", "對明天的未知感到焦慮,翻來覆去睡不著。", "腦袋像一片虛無,但就是想繼續滑手機不想睡。", "播放一些輕音樂或白噪音,試圖讓自己平靜。"], scores: [8, 6, 4, 2] },
     { q: "8. 如果可以用一種聲音來形容你這週的心理狀態,那會是?", a: ["救護車的警報聲(嗶啵嗶啵),非常緊繃。", "除濕機的低頻運轉聲(嗡嗡嗡),沉悶又除不乾淨。", "貓咪的呼嚕聲或下雨聲,平靜但帶有一點疲憊。", "遊樂園的背景雜音,很熱鬧但聽久了頭很暈.."], scores: [8, 6, 4, 2] },
     { q: "9. 朋友突然臨時取消了週末的聚會,你當下的真實感受是?", a: ["太棒了!可以理直氣壯在家躺平,內心一陣狂喜。", "有點失落和寂寞,是不是自己哪之做不好?", "突然空下來很慌,立刻開始找別人或排滿其他行程。", "沒關係,那就順其自然調整計畫吧。"], scores: [8, 6, 4, 2] }
   ];
@@ -604,12 +595,7 @@
       currentQ.a.forEach((option, i) => {
         const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = option;
         btn.onclick = () => {
-          if (!isMusicPlaying && currentIdx === 0) {
-            bgm.play().then(() => {
-              isMusicPlaying = true;
-              bgmCtrl.innerText = "🎵 BGM: ON";
-            }).catch(e => console.log(e));
-          }
+          playQuizSound();
           scoreHistory.push(currentQ.scores[i]); totalScore += currentQ.scores[i]; currentIdx++; showQuestion();
         };
         optionsContainer.appendChild(btn);
@@ -622,6 +608,7 @@
       question10.a.forEach((option, i) => {
         const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = option;
         btn.onclick = () => {
+          playQuizSound();
           scoreHistory.push(question10.scores[i]); totalScore += question10.scores[i]; currentIdx++; showResult();
         };
         optionsContainer.appendChild(btn);
@@ -630,6 +617,7 @@
   }
 
   function handleBackNavigation() {
+    playQuizSound();
     if (currentIdx === 0) {
       window.location.href = "./cover.html";
     } else {
@@ -659,7 +647,6 @@
     document.getElementById('char-name').innerText = charName;
     document.getElementById('quote-text').innerText = quote;
 
-    if (isMusicPlaying) { setBgmSpeed(1); }
     startTrackingAR(color);
   }
 
@@ -680,7 +667,11 @@
         const scaledWidth = parseFloat(imgElement.style.width || '0');
         if (!scaledWidth) return;
         const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
-        const drawWidth = scaledWidth; const drawHeight = scaledWidth * aspect;
+        
+        const isRightEye = (imgElement === rImg);
+        const drawWidth = isRightEye ? (scaledWidth * 1.25) : scaledWidth; 
+        const drawHeight = drawWidth * aspect;
+        
         const sourceX = (imgElement === lImg ? eyePositions.lx : eyePositions.rx) - rect.left;
         const sourceY = (imgElement === lImg ? eyePositions.ly : eyePositions.ry) - rect.top;
         const canvasX = sourceX * (canvasElement.width / rect.width);
@@ -711,6 +702,7 @@
   }
 
   function goToPhotoResultPage() {
+    playActionSound();
     document.getElementById('result-page').style.display = 'none';
     document.getElementById('preview-page').style.display = 'none';
     document.getElementById('photo-result-page').style.display = 'block';
@@ -729,8 +721,8 @@
     document.getElementById('photo-quote-text').innerText = document.getElementById('quote-text').innerText;
   }
 
- // 🌟 潼，整頁打包終極版：現場截圖整頁卡片，並同步送上雲端，各就各位！
   function saveCurrentResult() {
+    playQuizSound();
     if (document.getElementById('photo-result-page').style.display !== 'block') {
       return; 
     }
@@ -739,7 +731,6 @@
     const hintText = document.getElementById('qr-text-hint');
     if (!container) return;
 
-    // 1. 現場變出唯一的 ID 號碼牌與 QR Code
     const uniqueId = "id_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
     const baseUrl = window.location.origin + window.location.pathname;
     
@@ -767,12 +758,10 @@
         hintText.style.color = "#ffdd67";
       }
 
-      // 2. 📸 為了確保傳給試算表的是「整頁完美大圖」，我們等 QR 碼在畫面上渲染 100 毫秒後，立刻截圖上傳！
       setTimeout(() => {
         if (window.html2canvas) {
           const target = document.getElementById('photo-result-page');
           
-          // 排除不需要被截圖進去的「兩個控制按鈕欄位」，讓卡片更乾淨
           html2canvas(target, { 
             backgroundColor: '#141414', 
             scale: 2, 
@@ -782,7 +771,6 @@
           .then(canvas => {
             const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
-            // 🚀 關鍵核心：把 finalDataUrl（整頁含阿紫與名字的大圖）丟給 Google 試算表！
             fetch(DATABASE_API_URL, {
               method: "POST",
               headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -791,14 +779,13 @@
                 charName: charName,
                 quote: quote,
                 color: currentFinalColor,
-                photoDataUrl: finalDataUrl // 👑 這裏改用完全體大截圖，不再只是自拍照了！
+                photoDataUrl: finalDataUrl 
               })
             })
             .then(res => res.json())
             .then(resData => console.log("雲端整頁報告同步備份成功！", resData))
             .catch(err => console.error("雲端備份稍有波折", err));
 
-            // 📥 觸發電腦端的實體 JPEG 下載
             const link = document.createElement('a');
             link.href = finalDataUrl;
             link.download = `${charName}_成果回收報告.jpg`;
@@ -814,14 +801,57 @@
     }
   }
 
+  // 🌟 拍貼機 3 秒倒數
+  function goToPhotoPreview() {
+    playActionSound();
+    const cameraActionBtn = document.getElementById('camera-action-btn'); 
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    if (cameraActionBtn && cameraActionBtn.disabled) return;
+
+    if (cameraActionBtn) {
+      cameraActionBtn.disabled = true;
+      cameraActionBtn.innerText = "📸 準備拍照，請看鏡頭！";
+    }
+
+    let countdown = 3; 
+    if (countdownOverlay) {
+      countdownOverlay.innerText = countdown;
+      countdownOverlay.style.display = 'block'; 
+    }
+
+    const timer = setInterval(() => {
+      countdown--;
+      
+      if (countdown > 0) {
+        if (countdownOverlay) {
+          countdownOverlay.innerText = countdown; 
+        }
+      } else {
+        clearInterval(timer);
+        if (countdownOverlay) {
+          countdownOverlay.style.display = 'none'; 
+        }
+
+        capturedPhotoDataUrl = captureCurrentFrame();
+        if (camera) { try { camera.stop(); } catch (e) { console.log(e); } }
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+        
+        showPreviewPage();
+
+        if (cameraActionBtn) {
+          cameraActionBtn.disabled = false;
+          cameraActionBtn.innerText = '拍照';
+        }
+      }
+    }, 1000);
+  }
+
   function restoreReadyToCaptureState() {
-    // 預防萬一的防呆，確保你的鏡頭貼圖正常運作
-    if (typeof ensureResultEyeImages === 'function') { ensureResultEyeImages(); }
     const lImg = document.getElementById('left-eye-img'); const rImg = document.getElementById('right-eye-img');
     if (lImg && rImg) {
       lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
       lImg.style.display = 'block'; rImg.style.display = 'block'; lImg.style.opacity = '1'; rImg.style.opacity = '1';
-      currentEyeWidth = 70; lImg.style.width = '70px'; rImg.style.width = '70px';
+      currentEyeWidth = 130; lImg.style.width = '130px'; rImg.style.width = '130px'; 
     }
     isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
     startTime = performance.now() - 7000; lastTimestamp = performance.now();
@@ -830,6 +860,7 @@
   }
 
   function retakePhoto() {
+    playActionSound();
     document.getElementById('preview-page').style.display = 'none';
     document.getElementById('result-page').style.display = 'block';
     document.getElementById('photo-result-page').style.display = 'none';
@@ -843,22 +874,32 @@
     }
     try { camera.start(); } catch (error) { console.error('重新啟動鏡頭失敗：', error); }
     restoreReadyToCaptureState();
-  }
-
-  function goToPhotoPreview() {
-    const cameraActionBtn = document.getElementById('camera-action-btn'); if (cameraActionBtn && cameraActionBtn.disabled) return;
-    capturedPhotoDataUrl = captureCurrentFrame();
-    if (camera) { try { camera.stop(); } catch (e) { console.log(e); } }
-    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-    showPreviewPage();
   }
 
   function goToCoverPage() {
-    // 👑 重新回收按鈕：直接清除網址號碼牌，以最乾淨的狀態導向首頁，絕對不卡關、不留殘留！
-    window.location.href = "./cover.html";
+    playQuizSound();
+    window.parent.postMessage("CLOSE_QUIZ_AND_GO_HOME", "*");
   }
 
-  // 🌟 終極大結局：本機沖洗相簿版，直接在手機上現場洗成高畫質大照片！
+  // 🌟 跨時空音樂遙控核心：穿透去外殼精準控制 'cover-bgm'
+  function toggleOuterBgm() {
+    playActionSound();
+    const localBtn = document.getElementById('bgm-ctrl');
+    if (!localBtn) return;
+    if (window.parent) {
+      const outerBgm = window.parent.document.getElementById('cover-bgm');
+      if (outerBgm) {
+        if (outerBgm.paused) {
+          outerBgm.play();
+          localBtn.innerText = "🎵 BGM: ON";
+        } else {
+          outerBgm.pause();
+          localBtn.innerText = "🎵 BGM: OFF";
+        }
+      }
+    }
+  }
+
   window.addEventListener("DOMContentLoaded", () => {
     initAiCore();
 
@@ -896,99 +937,27 @@
       });
     }
   });
-
-  function restoreReadyToCaptureState() {
-    ensureResultEyeImages();
-    const lImg = document.getElementById('left-eye-img'); const rImg = document.getElementById('right-eye-img');
-    lImg.src = colorPatternsBase[currentFinalColor]; rImg.src = colorPatternsBase[currentFinalColor];
-    lImg.style.display = 'block'; rImg.style.display = 'block'; lImg.style.opacity = '1'; rImg.style.opacity = '1';
-    currentEyeWidth = 70; lImg.style.width = '70px'; rImg.style.width = '70px';
-
-    isShrinking = false; shrinkStartTimestamp = 0; hasCompletedSequence = true;
-    startTime = performance.now() - 7000; lastTimestamp = performance.now();
-
-    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-    animationFrameId = requestAnimationFrame(animateImageGrowth);
-  }
-
-  function retakePhoto() {
-    document.getElementById('preview-page').style.display = 'none';
-    document.getElementById('result-page').style.display = 'block';
-    document.getElementById('photo-result-page').style.display = 'none';
-    capturedPhotoDataUrl = ''; updateCameraActionButtonState(true, '拍照');
-
-    if (!camera) {
-      const CameraClass = window.Camera || Camera;
-      camera = new CameraClass(videoElement, {
-        onFrame: async () => { await faceMesh.send({ image: videoElement }); }, width: 640, height: 480
-      });
+  // 🌟 遙控器一：敲擊問答選項音效
+  function playQuizSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('quiz-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log(e));
+      }
     }
-    try { camera.start(); } catch (error) { console.error('重新啟動鏡頭失敗：', error); }
-    restoreReadyToCaptureState();
   }
 
-  function goToPhotoPreview() {
-    const cameraActionBtn = document.getElementById('camera-action-btn'); if (cameraActionBtn && cameraActionBtn.disabled) return;
-    capturedPhotoDataUrl = captureCurrentFrame();
-    if (camera) { try { camera.stop(); } catch (e) { console.log(e); } }
-    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-    const lImg = document.getElementById('left-eye-img'); const rImg = document.getElementById('right-eye-img');
-    if (lImg) lImg.remove(); if (rImg) rImg.remove();
-    showPreviewPage();
-  }
-
-  function resetQuizToCover() {
-    totalScore = 0; currentIdx = 0; scoreHistory = [];
-    if (isMusicPlaying) { setBgmSpeed(1.0); }
-    document.getElementById('preview-page').style.display = 'none';
-    document.getElementById('photo-result-page').style.display = 'none';
-    ensureResultEyeImages();
-    window.location.href = "./cover.html";
-  }
-
- // 🌟 終極大結局：本機沖洗相簿版，直接把剛才那一座山的程式碼現場洗成高畫質大照片！
-  window.addEventListener("DOMContentLoaded", () => {
-    initAiCore();
-
-    const params = new URLSearchParams(window.location.search);
-    const shareId = params.get('uid') || params.get('id');
-
-    if (shareId) {
-      // 🚀 物理攔截：先在手機上變出一個充滿儀式感的洗照片畫面
-      document.body.innerHTML = `
-        <div id="loading-img-cloud" style="width: 100vw; height: 100vh; background: #0b0b0b; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: sans-serif; position: fixed; top:0; left:0; z-index:999999;">
-          <div style="color: #ffdd67; font-size: 20px; font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">深夜煉金術：正在沖洗結果照片...</div>
-          <div style="color: #666; font-size: 13px;">（正在從雲端相簿回收大照片，請稍候）</div>
-        </div>
-      `;
-
-      // 🛡️ 我們改用帶有追蹤跳轉的 fetch 去後台把那一座山的資料默默拿回來
-      fetch(`${DATABASE_API_URL}?uid=${shareId}`, {
-        method: "GET",
-        mode: "cors",
-        redirect: "follow"
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === "success" && data.photoDataUrl) {
-          // 👑 奇蹟降臨：把那一長串密密麻麻的文字，物理轉化為滿版大圖片！
-          document.body.innerHTML = `
-            <div style="width: 100vw; min-height: 100vh; background: #141414; display: flex; justify-content: center; align-items: center; margin: 0; padding: 20px; box-sizing: border-box; position: absolute; top:0; left:0; z-index:999999;">
-              <img src="${data.photoDataUrl}" alt="成果報告" style="width: 100%; max-width: 800px; height: auto; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.8); display: block;">
-            </div>
-          `;
-        } else {
-          document.body.innerHTML = `<div style="color: #ff4444; text-align:center; padding-top:100px; background:#141414; height:100vh;">找不到這張照片報告，請重新生成一次</div>`;
-        }
-      })
-      .catch(err => {
-        // 🌟 【超級防爆線】：萬一手機 Safari 又被攔截了背景連線，我們用「備用實體提取法」
-        // 直接去解析 Google 的那串文字，絕對不讓手機卡在英文字畫面！
-        console.error("背景讀取有波折，啟動實體安全提取...");
-        window.location.href = `${DATABASE_API_URL}?uid=${shareId}`;
-      });
+  // 🌟 遙控器二：敲擊其他所有功能按鈕的音效
+  function playActionSound() {
+    if (window.parent && window.parent.document) {
+      const audio = window.parent.document.getElementById('action-sound');
+      if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log(e));
+      }
     }
-  });
+  }
 </script>
 </body>
 </html>
