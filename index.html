@@ -522,7 +522,7 @@
         }
       }
     } else {
-      currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.none = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
+      currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     }
 
     // 🌟 左右眼大小一致
@@ -530,13 +530,14 @@
     rImg.style.width = currentEyeWidth + 'px'; 
 
     if (hasLockedCoordinates) {
-      // 🌟 防 iframe 偏位微調
+      // 🌟 防 iframe 偏位微調，並讓貼圖落在眼睛下方
       const inwardShift = Math.min(currentEyeWidth * -0.15, 60); 
+      const downwardShift = currentEyeWidth * 0.5;
       lImg.style.left = eyePositions.lx + inwardShift + 'px'; 
-      lImg.style.top = (eyePositions.ly + 10) + 'px'; 
+      lImg.style.top = (eyePositions.ly + downwardShift) + 'px'; 
       
       rImg.style.left = eyePositions.rx - inwardShift + 'px'; 
-      rImg.style.top = (eyePositions.ry + 10) + 'px'; 
+      rImg.style.top = (eyePositions.ry + downwardShift) + 'px'; 
     }
     animationFrameId = requestAnimationFrame(animateImageGrowth);
   }
@@ -668,8 +669,13 @@
         const scaledWidth = parseFloat(imgElement.style.width || '0');
         if (!scaledWidth) return;
         const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
-        
         const drawWidth = scaledWidth;
+        const drawHeight = drawWidth * aspect;
+        const isRightEye = imgElement === rImg;
+        const sourceX = (isRightEye ? eyePositions.rx : eyePositions.lx) - rect.left;
+        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) - rect.top;
+        const canvasX = sourceX * (canvasElement.width / rect.width);
+        const canvasY = sourceY * (canvasElement.height / rect.height);
         tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
       };
 
