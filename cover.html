@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>眼前的黑不是黑</title>
   <style>
-    /* 🌟 煙霧底層防線：鎖死純黑，防止外圍泛白 */
     html {
       background-color: #0b0b0b;
     }
@@ -30,9 +29,7 @@
       background-color: transparent; /* 讓底層煙霧透上來 */
     }
 
-    /* ==========================================
-       💨 封面頁：純白濃郁迷霧特效 (徹底洗去黃色調)
-       ========================================== */
+
     .smoke-bg-container {
       position: fixed;
       top: 0;
@@ -42,7 +39,7 @@
       overflow: hidden;
       z-index: -1;
       pointer-events: none;
-      background-color: #050505; /* 用極致深黑，把純白煙霧的厚度對比撐出來 */
+      background-color: #050505; 
     }
 
     .smoke-layer {
@@ -55,7 +52,7 @@
         radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.12) 0%, transparent 55%),
         radial-gradient(circle at 75% 65%, rgba(255, 255, 255, 0.09) 0%, transparent 60%),
         linear-gradient(to right, transparent, rgba(255, 255, 255, 0.04) 35%, rgba(255, 255, 255, 0.07) 65%, transparent);
-      filter: blur(55px); /* 維持絲滑的羽化感 */
+      filter: blur(55px); 
       pointer-events: none;
     }
 
@@ -149,7 +146,6 @@
       z-index: 2;
     }
 
-    /* 🌟 潼，新增：滿版隱形問答大外殼，平常隱藏（display: none;），按開始才完美噴出來蓋住全場 */
     #quiz-frame-container {
       position: fixed;
       top: 0;
@@ -205,14 +201,11 @@
             const frame = document.getElementById('quiz-frame-container');
             if (!frame) return;
 
-            // 🚀 黑魔法一：現場把妳絕對不改名的主戰場 index.html 載入進來！
             frame.src = "./index.html";
             
-            // 🚀 黑魔法二：一秒鐘亮出大外殼，把整個首頁畫面完美蓋上去！
             frame.style.display = "block";
         }
 
-        // 🌟 核心密語通訊：隨時監聽裡面的 index.html 有沒有要高喊「回首頁」？
         window.addEventListener("message", (event) => {
             if (event.data === "CLOSE_QUIZ_AND_GO_HOME") {
                 const frame = document.getElementById('quiz-frame-container');

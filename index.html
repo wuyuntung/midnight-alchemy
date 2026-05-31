@@ -174,7 +174,6 @@
 
     #result-page { display: none; }
     
-    /* 🌟 鎖死對齊防線：讓鏡頭容器完美置中填滿 */
     #result-page #tracking-container {
       width: 720px !important;   
       height: 540px !important;  
@@ -525,21 +524,16 @@
       currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.display = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     }
 
-    // 🌟 左右眼大小一致
     lImg.style.width = currentEyeWidth + 'px'; 
     rImg.style.width = currentEyeWidth + 'px'; 
-    lImg.style.height = 'auto';
-    rImg.style.height = 'auto';
 
     if (hasLockedCoordinates) {
-      // 🌟 防 iframe 偏位微調，並讓貼圖落在眼睛下方
       const inwardShift = Math.min(currentEyeWidth * -0.15, 60); 
-      const downwardShift = currentEyeWidth * 0.6;
       lImg.style.left = eyePositions.lx + inwardShift + 'px'; 
-      lImg.style.top = (eyePositions.ly + downwardShift) + 'px'; 
+      lImg.style.top = (eyePositions.ly + 10) + 'px'; 
       
       rImg.style.left = eyePositions.rx - inwardShift + 'px'; 
-      rImg.style.top = (eyePositions.ry + downwardShift) + 'px'; 
+      rImg.style.top = (eyePositions.ry + 10) + 'px'; 
     }
     animationFrameId = requestAnimationFrame(animateImageGrowth);
   }
@@ -553,11 +547,10 @@
       const landmarks = results.multiFaceLandmarks[0];
       const rect = canvasElement.getBoundingClientRect();
       
-      // 🌟 使用下眼線點，讓貼圖更穩定地顯示在眼睛下方
-      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[159].x) * rect.width;
-      eyePositions.ly = window.scrollY + rect.top + landmarks[159].y * rect.height;
-      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[386].x) * rect.width;
-      eyePositions.ry = window.scrollY + rect.top + landmarks[386].y * rect.height;
+      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[111].x) * rect.width;
+      eyePositions.ly = window.scrollY + rect.top + landmarks[111].y * rect.height;
+      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[340].x) * rect.width;
+      eyePositions.ry = window.scrollY + rect.top + landmarks[340].y * rect.height;
       hasLockedCoordinates = true;
     }
     canvasCtx.restore();
@@ -671,13 +664,12 @@
         const scaledWidth = parseFloat(imgElement.style.width || '0');
         if (!scaledWidth) return;
         const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
-        const drawWidth = scaledWidth;
+        const isRightEye = (imgElement === rImg);
+        const drawWidth = isRightEye ? (scaledWidth * 1.25) : scaledWidth; 
         const drawHeight = drawWidth * aspect;
-        const isRightEye = imgElement === rImg;
-        const inwardShift = Math.min(currentEyeWidth * -0.15, 60);
-        const downwardShift = drawHeight * 0.6;
-        const sourceX = (isRightEye ? eyePositions.rx - inwardShift : eyePositions.lx + inwardShift) - rect.left;
-        const sourceY = (isRightEye ? eyePositions.ry : eyePositions.ly) + downwardShift - rect.top;
+        
+        const sourceX = (imgElement === lImg ? eyePositions.lx : eyePositions.rx) - rect.left;
+        const sourceY = (imgElement === lImg ? eyePositions.ly : eyePositions.ry) - rect.top;
         const canvasX = sourceX * (canvasElement.width / rect.width);
         const canvasY = sourceY * (canvasElement.height / rect.height);
         tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
@@ -805,7 +797,6 @@
     }
   }
 
-  // 🌟 拍貼機 3 秒倒數
   function goToPhotoPreview() {
     playActionSound();
     const cameraActionBtn = document.getElementById('camera-action-btn'); 
@@ -885,7 +876,6 @@
     window.parent.postMessage("CLOSE_QUIZ_AND_GO_HOME", "*");
   }
 
-  // 🌟 跨時空音樂遙控核心：穿透去外殼精準控制 'cover-bgm'
   function toggleOuterBgm() {
     playActionSound();
     const localBtn = document.getElementById('bgm-ctrl');
@@ -941,7 +931,6 @@
       });
     }
   });
-  // 🌟 遙控器一：敲擊問答選項音效
   function playQuizSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('quiz-sound');
@@ -952,7 +941,6 @@
     }
   }
 
-  // 🌟 遙控器二：敲擊其他所有功能按鈕的音效
   function playActionSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('action-sound');
@@ -962,7 +950,6 @@
       }
     }
   }
-  // 🌟 潼，新增這個「貼圖登場」跨網頁遙控器：
   function playAppearSound() {
     if (window.parent && window.parent.document) {
       const audio = window.parent.document.getElementById('appear-sound');
