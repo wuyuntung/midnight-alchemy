@@ -547,10 +547,10 @@
       const landmarks = results.multiFaceLandmarks[0];
       const rect = canvasElement.getBoundingClientRect();
       
-      eyePositions.lx = window.scrollX + rect.left + (1 - landmarks[111].x) * rect.width;
-      eyePositions.ly = window.scrollY + rect.top + landmarks[111].y * rect.height;
-      eyePositions.rx = window.scrollX + rect.left + (1 - landmarks[340].x) * rect.width;
-      eyePositions.ry = window.scrollY + rect.top + landmarks[340].y * rect.height;
+      eyePositions.lx = rect.left + (1 - landmarks[111].x) * rect.width;
+      eyePositions.ly = rect.top + landmarks[111].y * rect.height;
+      eyePositions.rx = rect.left + (1 - landmarks[340].x) * rect.width;
+      eyePositions.ry = rect.top + landmarks[340].y * rect.height;
       hasLockedCoordinates = true;
     }
     canvasCtx.restore();
