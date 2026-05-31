@@ -525,9 +525,9 @@
       currentEyeWidth = 130; lImg.style.display = 'none'; rImg.style.none = 'none'; lImg.style.opacity = '0'; rImg.style.opacity = '0';
     }
 
-    // 🌟 一對一對齊比例，右眼貼圖增幅放大 1.25 倍
+    // 🌟 左右眼大小一致
     lImg.style.width = currentEyeWidth + 'px'; 
-    rImg.style.width = (currentEyeWidth * 1.25) + 'px'; 
+    rImg.style.width = currentEyeWidth + 'px'; 
 
     if (hasLockedCoordinates) {
       // 🌟 防 iframe 偏位微調
@@ -669,14 +669,7 @@
         if (!scaledWidth) return;
         const aspect = imgElement.naturalHeight / imgElement.naturalWidth;
         
-        const isRightEye = (imgElement === rImg);
-        const drawWidth = isRightEye ? (scaledWidth * 1.25) : scaledWidth; 
-        const drawHeight = drawWidth * aspect;
-        
-        const sourceX = (imgElement === lImg ? eyePositions.lx : eyePositions.rx) - rect.left;
-        const sourceY = (imgElement === lImg ? eyePositions.ly : eyePositions.ry) - rect.top;
-        const canvasX = sourceX * (canvasElement.width / rect.width);
-        const canvasY = sourceY * (canvasElement.height / rect.height);
+        const drawWidth = scaledWidth;
         tempCtx.drawImage(imgElement, canvasX - drawWidth / 2, canvasY - drawHeight / 2, drawWidth, drawHeight);
       };
 
