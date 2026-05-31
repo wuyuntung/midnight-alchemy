@@ -802,6 +802,7 @@
   }
 
  function saveCurrentResult() {
+    // 1. 防禦安全機制，如果沒在結果頁就不執行
     if (document.getElementById('photo-result-page').style.display !== 'block') {
       return; 
     }
@@ -810,7 +811,16 @@
     const hintText = document.getElementById('qr-text-hint');
     if (!container) return;
 
+    // 🌟 貼心提示：告訴受測者系統正在煉金拍照，請稍候
+    if (hintText) {
+      hintText.innerText = "⚡ 深夜煉金術正在拍照並同步雲端，請稍候...";
+      hintText.style.color = "#ffdd67";
+    }
+    container.innerHTML = '<span style="font-size: 13px; color: #666;">圖片提煉中...</span>';
+
     const uniqueId = "id_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000);
+    
+    // 🌟 自動對齊網址：確保手機掃描後會回到妳正確的 GitHub Page 網頁
     const baseUrl = window.location.origin + window.location.pathname;
     
     let charName = '大同電鍋英雄';
@@ -820,64 +830,71 @@
       quote = document.getElementById('photo-quote-text')?.innerText || document.getElementById('quote-text')?.innerText || '';
     } catch(e) {}
 
-    try {
-      const shareUrl = `${baseUrl}?uid=${uniqueId}`;
-      container.innerHTML = '';
-      new QRCode(container, {
-        text: shareUrl,
-        width: 156,
-        height: 156,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
+    // 2. 第一步：先拍下精美的整頁 JPG 報告
+    setTimeout(() => {
+      if (window.html2canvas) {
+        const target = document.getElementById('photo-result-page');
+        
+        html2canvas(target, { 
+          backgroundColor: '#141414', 
+          scale: 2, 
+          useCORS: true, 
+          logging: false 
+        })
+        .then(canvas => {
+          const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
-      if (hintText) {
-        hintText.innerText = "提煉成功！專屬 QR 碼已同步包含在下載的圖片中囉！";
-        hintText.style.color = "#ffdd67";
-      }
-
-      setTimeout(() => {
-        if (window.html2canvas) {
-          const target = document.getElementById('photo-result-page');
-          
-          html2canvas(target, { 
-            backgroundColor: '#141414', 
-            scale: 2, 
-            useCORS: true, 
-            logging: false 
-          })
-          .then(canvas => {
-            const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-
-            fetch(DATABASE_API_URL, {
-              method: "POST",
-              headers: { "Content-Type": "text/plain;charset=utf-8" },
-              body: JSON.stringify({
-                id: uniqueId,
-                charName: charName,
-                quote: quote,
-                color: currentFinalColor,
-                photoDataUrl: finalDataUrl 
-              })
+          // 3. 第二步：立刻發送 POST 把結果圖焊進 Google Apps Script 雲端
+          fetch(DATABASE_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              id: uniqueId,
+              charName: charName,
+              quote: quote,
+              color: currentFinalColor,
+              photoDataUrl: finalDataUrl 
             })
-            .then(res => res.json())
-            .then(resData => console.log("雲端整頁報告同步備份成功！", resData))
-            .catch(err => console.error("雲端備份稍有波折", err));
+          })
+          .then(res => res.json())
+          .then(resData => {
+            console.log("雲端整頁報告同步備份成功！", resData);
+            
+            // 4. 🌟 終極核心：當雲端確認 100% 存檔圖片成功後，我們這時候才去提煉網頁 QR Code！
+            // 這樣手機一掃描網址，網頁一開場就能立刻從雲端把這張熱騰騰的照片洗出來了！
+            const shareUrl = `${baseUrl}?uid=${uniqueId}`;
+            
+            container.innerHTML = ''; // 清空加載中字樣
+            new QRCode(container, {
+              text: shareUrl, // 👈 掃描這個網址，手機會完美打開網頁並載入這張圖！
+              width: 156,
+              height: 156,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
 
-            const link = document.createElement('a');
-            link.href = finalDataUrl;
-            link.download = `${charName}_成果回收報告.jpg`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            if (hintText) {
+              hintText.innerText = "🎉 提煉成功！手機掃描右方 QR Code 即可直接在手機上查看這張結果圖報告囉！";
+              hintText.style.color = "#ffdd67";
+            }
+          })
+          .catch(err => {
+            console.error("雲端備份稍有波折", err);
+            container.innerHTML = '<span style="font-size: 12px; color: #ff4444;">提煉失敗</span>';
+            if (hintText) hintText.innerText = "雲端提煉稍有波折，請再點擊一次儲存！";
           });
-        }
-      }, 100);
 
-    } catch (error) {
-      console.error('儲存程序出錯：', error);
-    }
+          // 5. 電腦端依舊正常下載 JPG 備份
+          const link = document.createElement('a');
+          link.href = finalDataUrl;
+          link.download = `${charName}_成果回收報告.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        });
+      }
+    }, 100);
   }
 
   function goToPhotoPreview() {
